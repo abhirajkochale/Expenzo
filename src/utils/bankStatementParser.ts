@@ -25,7 +25,6 @@ export interface BankStatementParseResult {
 
 /* ===================== HELPER FUNCTIONS ===================== */
 
-// Helper: Split long text into smaller chunks (avoids AI output limits)
 function chunkTextByLines(text: string, linesPerChunk: number = 80): string[] {
   const lines = text.split('\n');
   const chunks: string[] = [];
@@ -35,59 +34,55 @@ function chunkTextByLines(text: string, linesPerChunk: number = 80): string[] {
   return chunks;
 }
 
-// Helper: The "Firewall" to clean AI garbage
+// FIX: Helper to extract cleaner Merchant names by removing UPI/Transfer prefixes
+function extractMerchant(description: string): string {
+  if (!description) return 'Unknown';
+  let clean = description.replace(/^upi[-/]/i, '').replace(/^transfer[-/]/i, '').trim();
+  return clean.split(/[-/]/)[0].trim() || 'Unknown';
+}
+
 function validateAndCleanAIOutput(rawTransactions: any[]): ParsedBankTransaction[] {
   if (!Array.isArray(rawTransactions)) return [];
 
   return rawTransactions
     .map((txn): ParsedBankTransaction | null => {
-      // 1. Clean Amount
       let amount = typeof txn.amount === 'string' 
         ? parseFloat(txn.amount.replace(/[^0-9.-]/g, '')) 
         : txn.amount;
       
-      // 2. Clean Date (DD-MM-YYYY)
       let date = txn.date;
       const indDateMatch = typeof date === 'string' && date.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
       
       if (indDateMatch) {
-        // Convert to YYYY-MM-DD
         const day = indDateMatch[1].padStart(2, '0');
         const month = indDateMatch[2].padStart(2, '0');
         const year = indDateMatch[3];
         date = `${year}-${month}-${day}`;
       } else if (!date || isNaN(Date.parse(date))) {
-        return null; // Skip invalid dates
+        return null; 
       }
 
-      // 3. Determine Type (STRICT FIX FOR PDF)
       let rawType = (txn.type || '').toLowerCase().trim();
       let type: 'income' | 'expense';
 
-      // Explicitly map common "Debit" words to "expense"
       if (['debit', 'dr', 'withdrawal', 'expense', 'out', 'payment'].includes(rawType)) {
         type = 'expense';
-      } 
-      // Explicitly map common "Credit" words to "income"
-      else if (['credit', 'cr', 'deposit', 'income', 'in', 'salary'].includes(rawType)) {
+      } else if (['credit', 'cr', 'deposit', 'income', 'in', 'salary'].includes(rawType)) {
         type = 'income';
-      } 
-      // Fallback: If AI didn't give a clear type, check if amount is negative
-      else {
+      } else {
         type = amount < 0 ? 'expense' : 'income';
       }
       
-      // Ensure amount is always positive for the database (type handles logic)
       amount = Math.abs(amount);
 
-      // 4. Return strictly typed object
       return {
         date: date, 
         description: txn.description || "Unknown",
         amount: amount || 0,
         type: type,
-        merchant: txn.merchant || "Unknown",
-        category: (txn.category || "other") as any, 
+        // FIX: Applied expanded categorization and cleaner merchant extraction
+        category: autoCategorize(txn.description || ''),
+        merchant: extractMerchant(txn.description || ''),
         debug: { original: txn }
       };
     })
@@ -104,7 +99,6 @@ async function parseWithAI(rawText: string): Promise<BankStatementParseResult> {
     let allTransactions: ParsedBankTransaction[] = [];
     
     const promises = chunks.map(async (chunk, index) => {
-        // UPDATED PROMPT: Explicit instructions for Type
         const prompt = `
           You are a strict data extraction engine.
           Extract transactions from this partial bank statement text.
@@ -207,16 +201,34 @@ function splitCSVRow(row: string): string[] {
   return result.map(s => s.replace(/^"|"$/g, '').replace(/""/g, '"'));
 }
 
+// FIX: Expanded Indian-student specific keyword logic to minimize "Other" category
 function autoCategorize(description: string): CategoryType {
   const d = description.toLowerCase();
-  if (/salary|freelance|interest|credit|deposit|refund|dividend|profit/.test(d)) return 'salary';
-  if (/swiggy|zomato|food|restaurant|cafe|mcdonalds|starbucks|dominos|pizza|burger|tea|canteen/.test(d)) return 'food';
-  if (/uber|ola|petrol|fuel|transport|metro|rail|flight|irctc|fastag|bus|auto|fare/.test(d)) return 'transport';
-  if (/amazon|flipkart|shopping|store|mart|myntra|zudio|uniqlo|blinkit|zepto|stationery|book/.test(d)) return 'shopping';
-  if (/electricity|water|internet|mobile|jio|airtel|bsnl|broadband|netflix|spotify|recharge/.test(d)) return 'utilities';
-  if (/rent|emi|loan|housing|landlord|broker/.test(d)) return 'rent';
-  if (/hospital|medical|pharmacy|doctor|clinic|lab|health|1mg|apollo/.test(d)) return 'healthcare';
-  if (/sip|zerodha|groww|stocks|mutual fund|investment|gold/.test(d)) return 'investment';
+
+  // 1. Income & Stipends
+  if (/salary|freelance|stipend|internship|pocket money|interest|credit|deposit|refund|dividend|profit/.test(d)) return 'salary';
+
+  // 2. Food & Canteen (Added Tea Stall, Canteen)
+  if (/swiggy|zomato|food|restaurant|cafe|mcdonalds|starbucks|dominos|pizza|burger|tea|canteen|stall|bakery|eat/.test(d)) return 'food';
+
+  // 3. Transport (Added Auto, Bus, Rapido)
+  if (/uber|ola|petrol|fuel|transport|metro|rail|flight|irctc|fastag|bus|auto|fare|rickshaw|rapido/.test(d)) return 'transport';
+
+  // 4. Shopping & Academics (Added Stationery, Books, Print)
+  if (/amazon|flipkart|shopping|store|mart|myntra|zudio|uniqlo|blinkit|zepto|stationery|book|xerox|print/.test(d)) return 'shopping';
+
+  // 5. Utilities (Added Mobile Recharge, Spotify, Netflix)
+  if (/electricity|water|internet|mobile|jio|airtel|bsnl|vi|broadband|netflix|spotify|recharge|bill|yt premium/.test(d)) return 'utilities';
+
+  // 6. Rent & Housing
+  if (/rent|emi|loan|housing|landlord|broker|maintenance/.test(d)) return 'rent';
+
+  // 7. Healthcare
+  if (/hospital|medical|pharmacy|doctor|clinic|lab|health|1mg|apollo|medicine/.test(d)) return 'healthcare';
+
+  // 8. Investments
+  if (/sip|zerodha|groww|stocks|mutual fund|investment|gold|angel/.test(d)) return 'investment';
+
   return 'other';
 }
 
@@ -273,13 +285,15 @@ export function parseCSV(csv: string): BankStatementParseResult {
 
       if (amount === 0) continue;
 
+      const desc = cols[descIdx] || 'Transaction';
       transactions.push({
         date: parseDate(cols[dateIdx]),
-        description: cols[descIdx] || 'Transaction',
+        description: desc,
         amount,
         type,
-        category: autoCategorize(cols[descIdx] || ''),
-        merchant: cols[descIdx]?.split(/[-/]/)[0]?.trim() || 'Unknown',
+        // FIX: Applied expanded categorization and cleaner merchant extraction for CSV
+        category: autoCategorize(desc),
+        merchant: extractMerchant(desc),
         debug: { raw: rows[i] }
       });
     }
@@ -323,7 +337,6 @@ export async function parseBankStatement(file: File): Promise<BankStatementParse
     result = await parseExcel(file);
   }
   else if (file.type === 'application/pdf') {
-    console.log("PDF Detected. Extracting text...");
     try {
         rawText = await extractTextFromPDF(file);
     } catch (e) {
@@ -331,10 +344,7 @@ export async function parseBankStatement(file: File): Promise<BankStatementParse
     }
   }
 
-  // AI Fallback
   if (file.type === 'application/pdf' || (result.totalTransactions === 0)) {
-    console.log("Standard parser failed or PDF detected. Attempting AI parse...");
-    
     if (!rawText && file.name.endsWith('.csv')) {
        rawText = await file.text();
     }

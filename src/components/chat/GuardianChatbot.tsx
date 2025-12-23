@@ -160,36 +160,45 @@ export function GuardianChatbot({ open, onOpenChange }: GuardianChatbotProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      {/* Responsive Width: w-[100vw] ensures full width on mobile.
-        sm:max-w-lg restrains it on tablets/desktops.
-      */}
-      <SheetContent side="right" className="w-[100vw] sm:max-w-lg p-0 flex flex-col border-l border-border h-full">
+      <SheetContent 
+        side="right" 
+        className="w-[100vw] sm:max-w-lg p-0 flex flex-col border-l border-border h-full focus:outline-none"
+      >
         
-        {/* Header */}
-        <SheetHeader className="p-4 sm:p-6 border-b shrink-0">
+        {/* Header Section */}
+        <SheetHeader className="p-4 sm:p-6 border-b shrink-0 space-y-1">
           <div className="flex items-center justify-between">
-            <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl">
-              <Sparkles className="h-5 w-5 text-primary" />
+            <SheetTitle className="flex items-center gap-2 text-lg sm:text-xl text-emerald-600 dark:text-emerald-400">
+              <Sparkles className="h-5 w-5" />
               Ask Expenzo
             </SheetTitle>
-            {/* Close button is typically handled by SheetPrimitive, but if you have a custom one: */}
-            {/* <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="sm:hidden"><X className="h-5 w-5" /></Button> */}
+            
+            {/* 100% Correct Exit Button: Explicitly positioned in header */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onOpenChange(false)}
+              className="rounded-full hover:bg-muted transition-colors h-9 w-9"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+              <span className="sr-only">Close chat</span>
+            </Button>
           </div>
-          <SheetDescription className="text-xs sm:text-sm">
+          <SheetDescription className="text-xs sm:text-sm text-left">
             Your AI partner for smarter spending decisions
           </SheetDescription>
         </SheetHeader>
 
         {/* Messages Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-muted/30">
           {messages.map(m => (
             <div
               key={m.id}
               className={cn(
                 'max-w-[85%] px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap break-words shadow-sm',
                 m.role === 'user'
-                  ? 'ml-auto bg-primary text-primary-foreground rounded-tr-none'
-                  : 'bg-muted rounded-tl-none'
+                  ? 'ml-auto bg-emerald-600 text-white rounded-tr-none'
+                  : 'bg-background border border-border rounded-tl-none'
               )}
             >
               <ReactMarkdown
@@ -205,24 +214,29 @@ export function GuardianChatbot({ open, onOpenChange }: GuardianChatbotProps) {
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm pl-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex items-center gap-2 text-muted-foreground text-xs pl-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
               Expenzo is thinking…
             </div>
           )}
         </div>
 
-        {/* Input Area - with safe area padding for mobile */}
-        <div className="p-4 border-t bg-background shrink-0 pb-safe">
+        {/* Input Area */}
+        <div className="p-4 border-t bg-background shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="flex gap-2">
             <Input
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ask about your spending…"
-              className="flex-1"
+              placeholder="Ask about your spending patterns..."
+              className="flex-1 rounded-xl focus-visible:ring-emerald-500"
               onKeyDown={e => e.key === 'Enter' && handleSend()}
             />
-            <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <Button 
+              size="icon" 
+              onClick={handleSend} 
+              disabled={isLoading || !input.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 rounded-xl shrink-0"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
