@@ -5,9 +5,7 @@ import {
   Receipt,
   Target,
   PieChart,
-  Bell,
   Settings,
-  Zap,
 } from 'lucide-react';
 
 const navigation = [
@@ -15,8 +13,6 @@ const navigation = [
   { name: 'Transactions', href: '/transactions', icon: Receipt },
   { name: 'Spending Limits', href: '/budgets', icon: Target },
   { name: 'Patterns', href: '/insights', icon: PieChart },
-  { name: 'Guardian Rules', href: '/rules', icon: Zap },
-  { name: 'Notifications', href: '/notifications', icon: Bell },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -27,10 +23,10 @@ export function MobileNav() {
     // Fixed at bottom, hidden on desktop (md), with glassmorphism
     <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background/90 backdrop-blur-xl border-t border-border shadow-lg supports-[backdrop-filter]:bg-background/60">
       
-      {/* Flex container with horizontal scroll (no-scrollbar) to handle 7 items gracefully 
-        Added pb-safe or pb-5 to account for mobile home indicator bars
+      {/* Flex container now handles 5 items perfectly. 
+          Removed overflow-x-auto since 5 items fit standard mobile widths without scrolling.
       */}
-      <nav className="flex items-center justify-between overflow-x-auto no-scrollbar px-2 pt-2 pb-5 sm:pb-2 gap-1">
+      <nav className="flex items-center justify-around px-2 pt-2 pb-5 sm:pb-2 gap-1">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;
 

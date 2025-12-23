@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Upload, X, AlertCircle, Loader2, CheckCircle2, Trash2, FileText, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, X, Loader2, CheckCircle2, FileText, Sparkles, AlertTriangle } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
@@ -8,11 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { parseBankStatement, BankStatementParseResult } from '@/utils/bankStatementParser';
+import { parseBankStatement, BankStatementParseResult, ParsedBankTransaction } from '@/utils/bankStatementParser';
 import { transactionApi } from '@/db/api';
-import { TransactionFormData, CATEGORY_METADATA } from '@/types/types';
-import { format } from 'date-fns';
+import { TransactionFormData } from '@/types/types';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface BankStatementUploadDialogProps {
   open: boolean;
@@ -28,8 +28,12 @@ export function BankStatementUploadDialog({
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [parseResult, setParseResult] = useState<BankStatementParseResult | null>(null);
-  const [selectedTransactions, setSelectedTransactions] = useState<Set<number>>(new Set());
+  
+  // We store the result in a local state that we can EDIT
+  const [editableTransactions, setEditableTransactions] = useState<ParsedBankTransaction[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [parseMethod, setParseMethod] = useState<'ai' | 'regex' | undefined>(undefined);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -37,8 +41,8 @@ export function BankStatementUploadDialog({
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      setParseResult(null);
-      setSelectedTransactions(new Set());
+      setEditableTransactions([]);
+      setSelectedIndices(new Set());
     }
   };
 
@@ -47,21 +51,22 @@ export function BankStatementUploadDialog({
 
     try {
       setParsing(true);
-      
-      // The parseBankStatement function now handles PDF and AI fallback internally
       const result = await parseBankStatement(file);
 
       if (result.success && result.transactions.length > 0) {
-        setParseResult(result);
-        setSelectedTransactions(new Set(result.transactions.map((_, idx) => idx)));
+        setEditableTransactions(result.transactions);
+        setParseMethod(result.method);
+        // Select all by default
+        setSelectedIndices(new Set(result.transactions.map((_, idx) => idx)));
+        
         toast({
-          title: result.method === 'ai' ? 'AI Magic Complete! ✨' : 'Parse Successful',
-          description: `Extracted ${result.totalTransactions} transactions from ${file.name}.`,
+          title: result.method === 'ai' ? 'AI Processing Complete' : 'Parse Successful',
+          description: `Review the ${result.totalTransactions} extracted transactions below.`,
         });
       } else {
         toast({
           title: 'Parsing Failed',
-          description: result.error || 'Could not detect transactions. Try a different file format.',
+          description: result.error || 'No transactions found. Please try a clearer image or PDF.',
           variant: 'destructive',
         });
       }
@@ -69,7 +74,7 @@ export function BankStatementUploadDialog({
       console.error('Failed to parse:', error);
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred during parsing.',
+        description: 'An unexpected error occurred.',
         variant: 'destructive',
       });
     } finally {
@@ -77,47 +82,52 @@ export function BankStatementUploadDialog({
     }
   };
 
-  const handleToggleTransaction = (index: number) => {
-    const newSelected = new Set(selectedTransactions);
-    if (newSelected.has(index)) newSelected.delete(index);
-    else newSelected.add(index);
-    setSelectedTransactions(newSelected);
+  // --- EDITING LOGIC ---
+  const handleTransactionChange = (index: number, field: keyof ParsedBankTransaction, value: any) => {
+    const updated = [...editableTransactions];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditableTransactions(updated);
+  };
+
+  const handleToggleIndex = (index: number) => {
+    const newSet = new Set(selectedIndices);
+    if (newSet.has(index)) newSet.delete(index);
+    else newSet.add(index);
+    setSelectedIndices(newSet);
   };
 
   const handleToggleAll = () => {
-    if (selectedTransactions.size === parseResult?.transactions.length) {
-      setSelectedTransactions(new Set());
+    if (selectedIndices.size === editableTransactions.length) {
+      setSelectedIndices(new Set());
     } else {
-      setSelectedTransactions(new Set(parseResult?.transactions.map((_, idx) => idx)));
+      setSelectedIndices(new Set(editableTransactions.map((_, idx) => idx)));
     }
   };
 
   const handleSave = async () => {
-    if (!parseResult || selectedTransactions.size === 0) return;
+    if (editableTransactions.length === 0 || selectedIndices.size === 0) return;
 
     try {
       setSaving(true);
-      const transactionsToSave = parseResult.transactions.filter((_, idx) =>
-        selectedTransactions.has(idx)
+      const transactionsToSave = editableTransactions.filter((_, idx) =>
+        selectedIndices.has(idx)
       );
 
-      // Prepare bulk data for insert
       const bulkData: TransactionFormData[] = transactionsToSave.map(txn => ({
         date: txn.date,
-        amount: txn.amount,
+        amount: Number(txn.amount), // Ensure number
         type: txn.type,
         description: txn.description,
-        merchant: txn.merchant,
+        merchant: txn.merchant || 'Unknown',
         category: txn.category || 'other',
         source: 'bank_statement',
       }));
 
-      // Use the new createMany method for fast bulk insert
       await transactionApi.createMany(bulkData);
 
       toast({
         title: 'Import Complete',
-        description: `Successfully saved ${bulkData.length} transactions instantly.`,
+        description: `Successfully saved ${bulkData.length} transactions.`,
       });
 
       handleClose();
@@ -133,13 +143,11 @@ export function BankStatementUploadDialog({
 
   const handleClose = () => {
     setFile(null);
-    setParseResult(null);
-    setSelectedTransactions(new Set());
+    setEditableTransactions([]);
+    setSelectedIndices(new Set());
     if (fileInputRef.current) fileInputRef.current.value = '';
     onOpenChange(false);
   };
-
-  const formatCurrency = (amount: number) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -149,13 +157,13 @@ export function BankStatementUploadDialog({
             <Upload className="h-5 w-5 text-primary" />
             Smart Statement Upload
           </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
-            Supports CSV, Excel, and PDF. Powered by AI for complex formats.
+          <DialogDescription>
+             Review and edit extracted data before saving to ensure accuracy.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 px-4 py-4 sm:px-0 flex-1 overflow-auto">
-          {!parseResult ? (
+          {editableTransactions.length === 0 ? (
             <div className="space-y-4">
               <div className="border-2 border-dashed border-border rounded-lg p-6 sm:p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
@@ -165,12 +173,12 @@ export function BankStatementUploadDialog({
                   <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-none mx-auto">
                     {file ? file.name : 'Click to select file'}
                   </p>
-                  <p className="text-xs text-muted-foreground">CSV, Excel, PDF</p>
+                  <p className="text-xs text-muted-foreground">CSV, Excel, PDF (Max 5MB)</p>
                 </div>
                 <Input 
                   ref={fileInputRef}
                   type="file" 
-                  accept=".csv,.xlsx,.xls,.pdf" // Added .pdf
+                  accept=".csv,.xlsx,.xls,.pdf" 
                   className="hidden" 
                   onChange={handleFileChange} 
                 />
@@ -178,59 +186,115 @@ export function BankStatementUploadDialog({
 
               <Button onClick={handleParse} disabled={!file || parsing} className="w-full" size="lg">
                 {parsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {parsing ? 'Analyzing with AI...' : 'Parse Statement'}
+                {parsing ? 'Analyzing Statement...' : 'Parse Statement'}
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Stats Bar */}
+              {/* Stats & Actions */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2">
-                    <p className="font-semibold text-sm">Found {parseResult.totalTransactions} transactions</p>
-                    {parseResult.method === 'ai' && (
-                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 flex gap-1 items-center">
-                            <Sparkles className="h-3 w-3" /> AI Parsed
+                    <p className="font-semibold text-sm">Reviewing {editableTransactions.length} transactions</p>
+                    {parseMethod === 'ai' && (
+                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                           AI Parsed
                         </Badge>
                     )}
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  <Badge variant="outline" className="text-xs">{selectedTransactions.size} selected</Badge>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Button variant="ghost" size="sm" className="h-8 text-xs ml-auto" onClick={handleToggleAll}>
-                    {selectedTransactions.size === parseResult.transactions.length ? 'Deselect All' : 'Select All'}
+                    {selectedIndices.size === editableTransactions.length ? 'Deselect All' : 'Select All'}
                   </Button>
                 </div>
               </div>
 
-              {/* Table */}
+              {/* Editable Table */}
               <div className="border rounded-lg overflow-hidden w-full bg-background">
                 <div className="max-h-[50vh] sm:max-h-[60vh] overflow-auto">
-                  <Table className="min-w-[800px]">
+                  <Table className="min-w-[900px]">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="w-12"><Checkbox checked={selectedTransactions.size === parseResult.transactions.length} onCheckedChange={handleToggleAll} /></TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="w-12"><Checkbox checked={selectedIndices.size === editableTransactions.length} onCheckedChange={handleToggleAll} /></TableHead>
+                        <TableHead className="w-[140px]">Date</TableHead>
+                        <TableHead className="w-[200px]">Description</TableHead>
+                        <TableHead className="w-[140px]">Category</TableHead>
+                        <TableHead className="w-[100px]">Type</TableHead>
+                        <TableHead className="text-right w-[120px]">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {parseResult.transactions.map((txn, index) => (
-                        <TableRow key={index}>
-                          <TableCell><Checkbox checked={selectedTransactions.has(index)} onCheckedChange={() => handleToggleTransaction(index)} /></TableCell>
-                          <TableCell className="whitespace-nowrap font-mono text-xs">{format(new Date(txn.date), 'dd MMM yyyy')}</TableCell>
-                          <TableCell className="max-w-[200px] truncate" title={txn.description}>{txn.description}</TableCell>
+                      {editableTransactions.map((txn, index) => (
+                        <TableRow key={index} className={!selectedIndices.has(index) ? "opacity-50" : ""}>
                           <TableCell>
-                            <Badge variant="outline" className="whitespace-nowrap capitalize">{txn.category || 'Other'}</Badge>
+                             <Checkbox checked={selectedIndices.has(index)} onCheckedChange={() => handleToggleIndex(index)} />
                           </TableCell>
+                          
+                          {/* Date Input */}
                           <TableCell>
-                            <Badge variant={txn.type === 'income' ? 'default' : 'secondary'} className={txn.type === 'income' ? 'bg-green-600' : ''}>
-                                {txn.type}
-                            </Badge>
+                            <Input 
+                                type="date" 
+                                value={txn.date} 
+                                onChange={(e) => handleTransactionChange(index, 'date', e.target.value)}
+                                className="h-8 w-full text-xs"
+                            />
                           </TableCell>
-                          <TableCell className="text-right font-medium font-mono">{formatCurrency(txn.amount)}</TableCell>
+                          
+                          {/* Description Input */}
+                          <TableCell>
+                            <Input 
+                                value={txn.description} 
+                                onChange={(e) => handleTransactionChange(index, 'description', e.target.value)}
+                                className="h-8 w-full text-xs"
+                            />
+                          </TableCell>
+                          
+                          {/* Category Select */}
+                          <TableCell>
+                             <Select 
+                               value={txn.category} 
+                               onValueChange={(val) => handleTransactionChange(index, 'category', val)}
+                             >
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="food">Food</SelectItem>
+                                    <SelectItem value="transport">Transport</SelectItem>
+                                    <SelectItem value="shopping">Shopping</SelectItem>
+                                    <SelectItem value="utilities">Utilities</SelectItem>
+                                    <SelectItem value="rent">Rent</SelectItem>
+                                    <SelectItem value="healthcare">Healthcare</SelectItem>
+                                    <SelectItem value="investment">Investment</SelectItem>
+                                    <SelectItem value="salary">Salary</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                             </Select>
+                          </TableCell>
+
+                          {/* Type Select */}
+                          <TableCell>
+                             <Select 
+                               value={txn.type} 
+                               onValueChange={(val) => handleTransactionChange(index, 'type', val)}
+                             >
+                                <SelectTrigger className={`h-8 text-xs w-[90px] ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="expense">Expense</SelectItem>
+                                    <SelectItem value="income">Income</SelectItem>
+                                </SelectContent>
+                             </Select>
+                          </TableCell>
+
+                          {/* Amount Input */}
+                          <TableCell className="text-right">
+                            <Input 
+                                type="number" 
+                                value={txn.amount} 
+                                onChange={(e) => handleTransactionChange(index, 'amount', parseFloat(e.target.value))}
+                                className="h-8 w-full text-xs text-right"
+                            />
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -243,10 +307,10 @@ export function BankStatementUploadDialog({
 
         <DialogFooter className="flex flex-col sm:flex-row gap-3 bg-card/90 border-t border-border p-4 sm:items-center sm:justify-between">
           <Button variant="outline" onClick={handleClose} disabled={saving} className="w-full sm:w-auto order-2 sm:order-1">Cancel</Button>
-          {parseResult && (
-            <Button onClick={handleSave} disabled={selectedTransactions.size === 0 || saving} className="w-full sm:w-auto bg-primary hover:bg-primary/90 order-1 sm:order-2">
+          {editableTransactions.length > 0 && (
+            <Button onClick={handleSave} disabled={selectedIndices.size === 0 || saving} className="w-full sm:w-auto bg-primary hover:bg-primary/90 order-1 sm:order-2">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-              {saving ? 'Saving...' : `Save ${selectedTransactions.size} Txns`}
+              {saving ? 'Saving...' : `Save ${selectedIndices.size} Transactions`}
             </Button>
           )}
         </DialogFooter>

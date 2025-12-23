@@ -10,8 +10,6 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer();
     
-    // FIX: Provide standardFontDataUrl to solve the font warning
-    // We point to the unpkg CDN that matches the installed version
     const loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
       standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
@@ -20,8 +18,8 @@ export async function extractTextFromPDF(file: File): Promise<string> {
     const pdf = await loadingTask.promise;
     
     let fullText = '';
-    // Limit to 5 pages to prevent AI token overflow on large files
-    const maxPages = Math.min(pdf.numPages, 5); 
+    // FIX: Removed the 5-page limit. Now reads ALL pages.
+    const maxPages = pdf.numPages; 
 
     for (let i = 1; i <= maxPages; i++) {
       const page = await pdf.getPage(i);
