@@ -1,0 +1,391 @@
+/* stylelint-disable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Funky Fintech Design System
+   Vibe: Vibrant, energetic, modern with glowing effects
+   Color Palette: Electric Purple, Neon Cyan, Hot Pink, Vibrant Orange
+*/
+
+@layer base {
+  :root {
+    --radius: 1rem; /* 16px - more pronounced rounded corners */
+
+    /* Refreshed finance-style palette (soft green background, navy foreground) */
+
+    --primary: 142 71% 45%; /* green matching CTAs */
+    --primary-foreground: 0 0% 100%;
+    --accent: 41 98% 62%; /* warm yellow */
+    --accent-foreground: 210 20% 12%;
+
+    --success: 152 36% 50%;
+    --warning: 14 100% 60%;
+    --info: 191 60% 55%;
+
+    /* Base / text */
+    --background: 140 60% 97%; /* very light green */
+    --foreground: 212 16% 12%; /* deep navy */
+
+    /* Cards & surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 212 16% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 212 16% 12%;
+
+    /* Muted */
+    --muted: 140 30% 94%;
+    --muted-foreground: 210 10% 55%;
+
+    /* Borders, inputs */
+    --border: 140 20% 88%;
+    --input: 140 20% 92%;
+    --ring: 142 71% 45%;
+
+    /* Chart colors - gentle variants */
+    --chart-1: 191 60% 55%;
+    --chart-2: 176 56% 55%;
+    --chart-3: 152 36% 50%;
+    --chart-4: 41 98% 62%;
+    --chart-5: 0 100% 71%;
+
+    /* Sidebar */
+    --sidebar-background: 140 40% 96%;
+    --sidebar-foreground: 212 16% 12%;
+    --sidebar-primary: 142 71% 45%;
+
+    /* Shadows */
+    --shadow-card: 0 6px 18px rgba(8, 15, 22, 0.06);
+    --shadow-hover: 0 10px 28px rgba(8, 15, 22, 0.08);
+    --shadow-elevated: 0 18px 40px rgba(8, 15, 22, 0.10);
+  }
+
+  .dark {
+    /* Dark mode overrides using a dark-blue palette */
+    --background: 220 40% 6%; /* deep dark blue */
+    --foreground: 210 20% 96%;
+
+    --card: 220 40% 10%; /* slightly lighter blue for surfaces */
+    --card-foreground: 210 20% 96%;
+
+    --popover: 220 40% 10%;
+    --popover-foreground: 210 20% 96%;
+
+    /* Primary: darker blue */
+    --primary: 142 71% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 142 95% 55%;
+
+    /* Secondary: darker teal */
+    --secondary: 176 56% 42%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: 176 95% 55%;
+
+    /* Accent (red) for dark mode */
+    --accent: 0 90% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 0 100% 70%;
+
+    /* Warning */
+    --warning: 41 98% 52%;
+    --warning-foreground: 210 20% 12%;
+    --warning-glow: 41 98% 62%;
+
+    /* Success */
+    --success: 152 36% 50%;
+    --success-foreground: 0 0% 100%;
+    --success-glow: 152 60% 60%;
+
+    /* Muted */
+    --muted: 220 18% 12%;
+    --muted-foreground: 210 12% 70%;
+
+    --border: 210 30% 20%;
+    --input: 210 30% 20%;
+    --ring: 142 71% 45%;
+
+    /* Chart colors - same hues but darker */
+    --chart-1: 0 90% 60%;
+    --chart-2: 176 56% 42%;
+    --chart-3: 191 60% 42%;
+    --chart-4: 152 36% 50%;
+    --chart-5: 41 98% 52%;
+
+    /* Sidebar */
+    --sidebar-background: 220 40% 8%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 142 71% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 18% 12%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 210 30% 20%;
+    --sidebar-ring: 191 60% 42%;
+
+    --shadow-card: 0 4px 24px 0 rgba(71, 184, 209, 0.18);
+    --shadow-hover: 0 8px 40px 0 rgba(71, 184, 209, 0.26);
+    --shadow-glow: 0 0 30px rgba(71, 184, 209, 0.36);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  /* HIDE SCROLLBAR UTILITY - Essential for Mobile Navigation */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  /* Safe padding for mobile bottom nav interaction areas */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Enhanced shadow utilities with glow */
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+  
+  .card-shadow-hover:hover {
+    box-shadow: var(--shadow-hover);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  /* Glow effects for buttons and interactive elements */
+  .glow-primary {
+    box-shadow: 0 0 20px hsla(var(--primary-glow), 0.5),
+                0 0 40px hsla(var(--primary-glow), 0.3);
+  }
+  
+  .glow-primary-hover:hover {
+    box-shadow: 0 0 25px hsla(var(--primary-glow), 0.7),
+                0 0 50px hsla(var(--primary-glow), 0.4),
+                0 0 75px hsla(var(--primary-glow), 0.2);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .glow-secondary {
+    box-shadow: 0 0 20px hsla(var(--secondary-glow), 0.5),
+                0 0 40px hsla(var(--secondary-glow), 0.3);
+  }
+  
+  .glow-secondary-hover:hover {
+    box-shadow: 0 0 25px hsla(var(--secondary-glow), 0.7),
+                0 0 50px hsla(var(--secondary-glow), 0.4),
+                0 0 75px hsla(var(--secondary-glow), 0.2);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 20px hsla(var(--accent-glow), 0.5),
+                0 0 40px hsla(var(--accent-glow), 0.3);
+  }
+  
+  .glow-accent-hover:hover {
+    box-shadow: 0 0 25px hsla(var(--accent-glow), 0.7),
+                0 0 50px hsla(var(--accent-glow), 0.4),
+                0 0 75px hsla(var(--accent-glow), 0.2);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .glow-success {
+    box-shadow: 0 0 20px hsla(var(--success-glow), 0.5),
+                0 0 40px hsla(var(--success-glow), 0.3);
+  }
+  
+  .glow-success-hover:hover {
+    box-shadow: 0 0 25px hsla(var(--success-glow), 0.7),
+                0 0 50px hsla(var(--success-glow), 0.4);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .glow-destructive {
+    box-shadow: 0 0 20px hsla(var(--destructive-glow), 0.5),
+                0 0 40px hsla(var(--destructive-glow), 0.3);
+  }
+  
+  .glow-destructive-hover:hover {
+    box-shadow: 0 0 25px hsla(var(--destructive-glow), 0.7),
+                0 0 50px hsla(var(--destructive-glow), 0.4);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  /* Enhanced shadow effects */
+  .shadow-xl-colored {
+    box-shadow: 0 20px 50px -12px hsla(var(--primary), 0.25);
+  }
+  
+  .shadow-2xl-colored {
+    box-shadow: 0 25px 60px -15px hsla(var(--primary), 0.3);
+  }
+  
+  /* Smooth transitions with bounce */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-bounce {
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+  
+  /* Money text - bold and vibrant */
+  .money-text {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  
+  /* Funky rounded corners */
+  .rounded-card {
+    border-radius: 1rem; /* 16px */
+  }
+  
+  .rounded-funky {
+    border-radius: 1.5rem; /* 24px */
+  }
+  
+  /* Gradient text effects */
+  .gradient-text-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  
+  .gradient-text-accent {
+    background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--warning)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  
+  /* Animated gradient backgrounds */
+  .bg-gradient-animated {
+    background: linear-gradient(
+      -45deg,
+      hsl(var(--primary)),
+      hsl(var(--secondary)),
+      hsl(var(--accent)),
+      hsl(var(--primary))
+    );
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+  
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  /* Pulse glow animation */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsla(var(--primary-glow), 0.4);
+    }
+    50% {
+      box-shadow: 0 0 30px hsla(var(--primary-glow), 0.7),
+                  0 0 50px hsla(var(--primary-glow), 0.4);
+    }
+  }
+  
+  /* Hover lift effect */
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+  
+  /* Neon border effect */
+  .border-neon {
+    border: 2px solid hsl(var(--primary));
+    box-shadow: 0 0 10px hsla(var(--primary-glow), 0.5),
+                inset 0 0 10px hsla(var(--primary-glow), 0.2);
+  }
+  
+  .border-neon-hover:hover {
+    box-shadow: 0 0 20px hsla(var(--primary-glow), 0.7),
+                inset 0 0 15px hsla(var(--primary-glow), 0.3);
+  }
+  
+  /* Custom scrollbar styles for chat */
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.5);
+    border-radius: 4px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.7);
+  }
+  
+  /* Firefox scrollbar */
+  .overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--muted));
+  }
+
+  /* Custom utilities requested by user */
+  /* Inline gap of 0.5cm to separate two sentences horizontally */
+  .gap-0-5cm-inline {
+    display: inline-block;
+    margin-left: 0.5cm;
+  }
+
+  /* Generic left-margin gap utility (can be applied to block elements) */
+  .gap-0-5cm {
+    margin-left: 0.5cm;
+  }
+
+  /* Vertical margin utility for stacked lines (0.5cm) */
+  .mt-0-5cm {
+    display: inline-block;
+    margin-top: 0.5cm;
+  }
+
+  /* Global override: make Tailwind's blue-500 text render using the project's green (--success)
+     This preserves existing class usage while showing green instead of blue. */
+  .text-blue-500 {
+    color: hsl(var(--success)) !important;
+  }
+}
