@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/images/expenzo-logo.png" alt="Expenzo Logo" width="200"/>
+
 # 🛡️ Expenzo
 
 ### AI-Powered Financial Guardian
@@ -17,7 +19,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-2.76-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Tech Stack](#-tech-stack) • [Contributing](#-contributing)
+[Features](#-features) • [Getting Started](#-getting-started) • [Usage](#-usage) • [Tech Stack](#%EF%B8%8F-tech-stack) • [Roadmap](#%EF%B8%8F-roadmap)
 
 </div>
 
@@ -27,15 +29,14 @@
 
 - [About the Project](#-about-the-project)
 - [Features](#-features)
-- [Tech Stack](#-tech-stack)
+- [Tech Stack](#%EF%B8%8F-tech-stack)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Environment Setup](#environment-setup)
 - [Usage](#-usage)
 - [Project Structure](#-project-structure)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
+- [Roadmap](#%EF%B8%8F-roadmap)
 - [Contributors](#-contributors)
 - [License](#-license)
 - [Contact](#-contact)
@@ -356,41 +357,6 @@ Expenzo/
 - [ ] Financial goal planning (retirement, education, etc.)
 
 See the [open issues](https://github.com/abhirajkochale/Expenzo/issues) for a full list of proposed features and known issues.
-
----
-
-## 🤝 Contributing
-
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**!
-
-### How to Contribute
-
-1. **Fork the Project**
-2. **Create your Feature Branch**
-   ```bash
-   git checkout -b feature/AmazingFeature
-   ```
-3. **Commit your Changes**
-   ```bash
-   git commit -m 'Add some AmazingFeature'
-   ```
-4. **Push to the Branch**
-   ```bash
-   git push origin feature/AmazingFeature
-   ```
-5. **Open a Pull Request**
-
-### Contribution Guidelines
-
-- Follow the existing code style and conventions
-- Write meaningful commit messages
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting PR
-
-### Code of Conduct
-
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
 
 ---
 
