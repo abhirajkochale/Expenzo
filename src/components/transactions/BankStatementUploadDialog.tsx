@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Loader2, CheckCircle2, FileText, Sparkles, AlertTriangle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Upload, Loader2, CheckCircle2, FileText, Sparkles } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { parseBankStatement, BankStatementParseResult, ParsedBankTransaction } from '@/utils/bankStatementParser';
+import { parseBankStatement, ParsedBankTransaction } from '@/utils/bankStatementParser';
 import { transactionApi } from '@/db/api';
 import { TransactionFormData } from '@/types/types';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,6 @@ export function BankStatementUploadDialog({
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // We store the result in a local state that we can EDIT
   const [editableTransactions, setEditableTransactions] = useState<ParsedBankTransaction[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [parseMethod, setParseMethod] = useState<'ai' | 'regex' | undefined>(undefined);
@@ -56,7 +55,6 @@ export function BankStatementUploadDialog({
       if (result.success && result.transactions.length > 0) {
         setEditableTransactions(result.transactions);
         setParseMethod(result.method);
-        // Select all by default
         setSelectedIndices(new Set(result.transactions.map((_, idx) => idx)));
         
         toast({
@@ -82,7 +80,6 @@ export function BankStatementUploadDialog({
     }
   };
 
-  // --- EDITING LOGIC ---
   const handleTransactionChange = (index: number, field: keyof ParsedBankTransaction, value: any) => {
     const updated = [...editableTransactions];
     updated[index] = { ...updated[index], [field]: value };
@@ -115,7 +112,7 @@ export function BankStatementUploadDialog({
 
       const bulkData: TransactionFormData[] = transactionsToSave.map(txn => ({
         date: txn.date,
-        amount: Number(txn.amount), // Ensure number
+        amount: Number(txn.amount),
         type: txn.type,
         description: txn.description,
         merchant: txn.merchant || 'Unknown',
@@ -151,48 +148,52 @@ export function BankStatementUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] sm:w-full max-w-7xl max-h-[90vh] flex flex-col overflow-hidden p-0 sm:p-6 rounded-xl">
-        <DialogHeader className="px-4 py-4 sm:px-0 sm:py-0 border-b sm:border-none">
+      <DialogContent className="w-full !max-w-[95vw] h-[90vh] flex flex-col overflow-hidden p-0 sm:p-6 rounded-xl">
+        <DialogHeader className="px-4 py-4 sm:px-0 sm:py-0 border-b sm:border-none flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Upload className="h-5 w-5 text-primary" />
             Smart Statement Upload
           </DialogTitle>
           <DialogDescription>
-             Review and edit extracted data before saving to ensure accuracy.
+             Review and edit extracted data before saving.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 px-4 py-4 sm:px-0 flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col min-h-0 px-4 pb-4 sm:px-0 sm:pb-0 overflow-hidden">
           {editableTransactions.length === 0 ? (
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-border rounded-lg p-6 sm:p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                   {file ? <FileText className="h-6 w-6 text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
+            <div className="flex-1 flex flex-col justify-center items-center space-y-4">
+              <div className="w-full max-w-lg space-y-4">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 sm:p-12 text-center hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                  <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                     {file ? <FileText className="h-6 w-6 text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-none mx-auto">
+                      {file ? file.name : 'Click to select file'}
+                    </p>
+                    {/* UPDATED TEXT HERE */}
+                    <p className="text-xs text-muted-foreground px-4">
+                      CSV & Excel (faster, preferred) • PDF (slow, less preferred)
+                    </p>
+                  </div>
+                  <Input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept=".csv,.xlsx,.xls,.pdf" 
+                    className="hidden" 
+                    onChange={handleFileChange} 
+                  />
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-none mx-auto">
-                    {file ? file.name : 'Click to select file'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">CSV, Excel, PDF (Max 5MB)</p>
-                </div>
-                <Input 
-                  ref={fileInputRef}
-                  type="file" 
-                  accept=".csv,.xlsx,.xls,.pdf" 
-                  className="hidden" 
-                  onChange={handleFileChange} 
-                />
-              </div>
 
-              <Button onClick={handleParse} disabled={!file || parsing} className="w-full" size="lg">
-                {parsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {parsing ? 'Analyzing Statement...' : 'Parse Statement'}
-              </Button>
+                <Button onClick={handleParse} disabled={!file || parsing} className="w-full" size="lg">
+                  {parsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  {parsing ? 'Analyzing Statement...' : 'Parse Statement'}
+                </Button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Stats & Actions */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted/50 rounded-lg border">
+            <div className="flex flex-col h-full gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg border flex-shrink-0">
                 <div className="flex items-center gap-2">
                     <p className="font-semibold text-sm">Reviewing {editableTransactions.length} transactions</p>
                     {parseMethod === 'ai' && (
@@ -209,24 +210,26 @@ export function BankStatementUploadDialog({
                 </div>
               </div>
 
-              {/* Editable Table */}
-              <div className="border rounded-lg overflow-hidden w-full bg-background">
-                <div className="max-h-[50vh] sm:max-h-[60vh] overflow-auto">
-                  <Table className="min-w-[900px]">
+              {/* TABLE CONTAINER */}
+              <div className="flex-1 border rounded-lg overflow-hidden w-full bg-background relative">
+                <div className="absolute inset-0 overflow-auto">
+                  {/* ADDED table-fixed to enforce widths and prevent overflow */}
+                  <Table className="w-full table-fixed">
                     <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                       <TableRow>
-                        <TableHead className="w-12"><Checkbox checked={selectedIndices.size === editableTransactions.length} onCheckedChange={handleToggleAll} /></TableHead>
-                        <TableHead className="w-[140px]">Date</TableHead>
-                        <TableHead className="w-[200px]">Description</TableHead>
-                        <TableHead className="w-[140px]">Category</TableHead>
+                        {/* Fixed widths for small columns, auto for description */}
+                        <TableHead className="w-[40px] text-center p-0"><Checkbox checked={selectedIndices.size === editableTransactions.length} onCheckedChange={handleToggleAll} /></TableHead>
+                        <TableHead className="w-[125px]">Date</TableHead>
+                        <TableHead className="w-auto">Description</TableHead>
+                        <TableHead className="w-[130px]">Category</TableHead>
                         <TableHead className="w-[100px]">Type</TableHead>
-                        <TableHead className="text-right w-[120px]">Amount</TableHead>
+                        <TableHead className="text-right w-[110px] pr-4">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {editableTransactions.map((txn, index) => (
                         <TableRow key={index} className={!selectedIndices.has(index) ? "opacity-50" : ""}>
-                          <TableCell>
+                          <TableCell className="text-center p-0">
                              <Checkbox checked={selectedIndices.has(index)} onCheckedChange={() => handleToggleIndex(index)} />
                           </TableCell>
                           
@@ -236,11 +239,11 @@ export function BankStatementUploadDialog({
                                 type="date" 
                                 value={txn.date} 
                                 onChange={(e) => handleTransactionChange(index, 'date', e.target.value)}
-                                className="h-8 w-full text-xs"
+                                className="h-8 w-full text-xs px-2"
                             />
                           </TableCell>
                           
-                          {/* Description Input */}
+                          {/* Description Input - Takes remaining space */}
                           <TableCell>
                             <Input 
                                 value={txn.description} 
@@ -255,7 +258,7 @@ export function BankStatementUploadDialog({
                                value={txn.category} 
                                onValueChange={(val) => handleTransactionChange(index, 'category', val)}
                              >
-                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="food">Food</SelectItem>
                                     <SelectItem value="transport">Transport</SelectItem>
@@ -276,7 +279,7 @@ export function BankStatementUploadDialog({
                                value={txn.type} 
                                onValueChange={(val) => handleTransactionChange(index, 'type', val)}
                              >
-                                <SelectTrigger className={`h-8 text-xs w-[90px] ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                <SelectTrigger className={`h-8 text-xs w-full ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -287,7 +290,7 @@ export function BankStatementUploadDialog({
                           </TableCell>
 
                           {/* Amount Input */}
-                          <TableCell className="text-right">
+                          <TableCell className="text-right pr-4">
                             <Input 
                                 type="number" 
                                 value={txn.amount} 
@@ -305,7 +308,7 @@ export function BankStatementUploadDialog({
           )}
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-3 bg-card/90 border-t border-border p-4 sm:items-center sm:justify-between">
+        <DialogFooter className="flex-shrink-0 flex flex-col sm:flex-row gap-3 bg-card/90 border-t border-border p-4 sm:items-center sm:justify-between mt-auto">
           <Button variant="outline" onClick={handleClose} disabled={saving} className="w-full sm:w-auto order-2 sm:order-1">Cancel</Button>
           {editableTransactions.length > 0 && (
             <Button onClick={handleSave} disabled={selectedIndices.size === 0 || saving} className="w-full sm:w-auto bg-primary hover:bg-primary/90 order-1 sm:order-2">
