@@ -1,57 +1,101 @@
-# 🛡️ Expenzo: AI-Powered Financial Guardian
+# 🛡️ Expenzo: The AI Financial Guardian
 
-![Expenzo Banner](https://via.placeholder.com/1200x400.png?text=Expenzo+Dashboard+Preview)
-> **Your personal AI financial analyst that predicts trends, detects anomalies, and helps you build wealth.**
+![Expenzo Banner](https://via.placeholder.com/1280x640.png?text=Expenzo+Spatial+Dashboard)
+<div align="center">
 
-[![React](https://img.shields.io/badge/React-18.2-blue?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite)](https://vitejs.dev/)
-[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)](https://supabase.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge)]()
+[![Version](https://img.shields.io/badge/Version-2.0.0_Spatial-blue?style=for-the-badge)]()
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-## 🌟 Introduction
+**Not just a tracker. A financial predictive engine.**
 
-**Expenzo** is not just an expense tracker; it's a financial **Guardian**. Unlike traditional apps that just log data, Expenzo uses local AI models to analyze your bank statements, predict future spending risks, and offer real-time conversational insights.
+[**View Demo**](https://your-demo-link.com) · [**Report Bug**](https://github.com/abhirajkochale/Expenzo/issues) · [**Request Feature**](https://github.com/abhirajkochale/Expenzo/issues)
 
-Whether you're trying to spot subscription traps, forecast your month-end balance, or just chat with your data, Expenzo makes it effortless.
+</div>
 
-## 🚀 Key Features
+---
 
-### 🤖 Guardian AI & Chatbot
-* **Conversational Finance:** Ask *"Can I afford a vacation next month?"* or *"How much did I spend on food vs. travel?"* and get instant, data-backed answers.
-* **Anomaly Detection:** The Guardian Engine scans transaction patterns to flag unusual spending or recurring billing spikes.
+## 📖 Introduction
+
+**Expenzo** redefines personal finance by moving beyond simple logging. It is an **AI-first "Guardian"** that actively monitors your financial health, predicts spending risks before they happen, and offers real-time strategic advice.
+
+Built with a **Spatial UI** design philosophy, Expenzo provides a modern, glassmorphic interface that adapts to your device, making finance feel tangible and interactive. Under the hood, it leverages a custom **Inference Engine** to parse messy Indian bank statements and detect anomalies with high precision.
+
+---
+
+## ✨ Key Features
+
+### 🧠 The Guardian Engine (AI Core)
+Unlike basic apps that just sum up totals, Expenzo's `insightGenerator` runs 7-layer heuristic analysis on every transaction:
+* **Anomaly Detection:** Flags single large purchases that deviate from your 30-day baseline.
+* **Subscription Traps:** Identifies recurring patterns to spot forgotten subscriptions.
+* **Velocity Checks:** Warns you if your spending *pace* (₹/day) is accelerating too fast for the month.
+* **Confidence Scoring:** Every insight comes with an "Explainability Score" (Low/Medium/High) so you know why the AI flagged it.
 
 ### 📄 Smart Statement Parser
-* **Universal Upload:** Drag & drop PDF or CSV bank statements (HDFC, SBI, ICICI, etc.).
-* **AI Categorization:** Automatically cleans messy bank descriptions (e.g., `POS 45223 STARBUCKS`) into clean categories like **Food & Dining**.
+* **Universal Import:** Drag-and-drop support for **PDF, CSV, and Excel** statements.
+* **Messy Data Cleaning:** Automatically cleans cryptic bank descriptions (e.g., `UPI/23498234/STARBUCKS-MUMBAI`) into clean merchants (`Starbucks`) and categories (`Food & Dining`).
+* **Regex + AI Hybrid:** Uses regex for speed and LLMs for edge cases.
 
-### 📊 Predictive Dashboard
-* **Spending Forecast:** Uses linear regression to predict if you will go over budget before it happens.
-* **Action Plans:** Generates actionable "Smart Steps" (e.g., *"Reduce dining out by ₹500 to stay on track"*).
-* **3D Spatial UI:** A beautiful, modern interface built with **Shadcn UI** and glassmorphism effects.
+### 💬 "Ask Expenzo" Chatbot
+* **Context-Aware:** The chatbot has read-access to your entire financial graph.
+* **Natural Language Queries:** * *"Can I afford a PS5 this month?"*
+    * *"How much did I spend on Swiggy vs Zomato?"*
+    * *"Forecast my savings for December."*
+
+### 📊 Spatial Dashboard
+* **3D Tilt UI:** Interactive cards that respond to mouse movement.
+* **Adaptive Glassmorphism:** Real-time background blurs that work in both Light and Dark modes.
+* **Action Plans:** Generates 3 specific, actionable steps daily (e.g., *"Spend less than ₹400 today to stay green"*).
+
+---
+
+## 📸 Screenshots
+
+| **Spatial Dashboard** | **Smart Import** |
+|:---:|:---:|
+| ![Dashboard](https://via.placeholder.com/600x300?text=Dashboard+Preview) <br> *Real-time financial overview with 3D tilt cards.* | ![Import](https://via.placeholder.com/600x300?text=Import+Preview) <br> *Parsing complex Indian bank statements instantly.* |
+
+| **Guardian Insights** | **AI Chatbot** |
+|:---:|:---:|
+| ![Insights](https://via.placeholder.com/600x300?text=Insights+Preview) <br> *AI detecting anomalies and celebrating wins.* | ![Chat](https://via.placeholder.com/600x300?text=Chat+Preview) <br> *Conversational finance with deep context.* |
+
+---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** React (Vite) + TypeScript
-* **Styling:** Tailwind CSS + Shadcn UI + Lucide Icons
-* **Backend / DB:** Supabase (PostgreSQL + Auth)
-* **AI Logic:** Custom TypeScript Inference Engine (`src/utils/aiService.ts`)
-* **State Management:** React Context API + Custom Hooks
+### Frontend
+* ![React](https://img.shields.io/badge/-React_18-61DAFB?logo=react&logoColor=black) **React 18** - Component architecture.
+* ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white) **TypeScript** - Strict type safety for financial data.
+* ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white) **Vite** - Blazing fast build tool.
+* ![Tailwind](https://img.shields.io/badge/-Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) **Tailwind CSS** - Styling engine.
+* ![Shadcn](https://img.shields.io/badge/-Shadcn_UI-000000?logo=shadcnui&logoColor=white) **Shadcn UI** - Premium component library.
 
-## 📂 Project Structure
+### Backend & Services
+* ![Supabase](https://img.shields.io/badge/-Supabase-3ECF8E?logo=supabase&logoColor=white) **Supabase** - PostgreSQL database, Auth, and Storage.
+* ![Gemini](https://img.shields.io/badge/-Google_Gemini-8E75B2?logo=googlebard&logoColor=white) **Google Gemini** - LLM for categorization and chat.
+
+### Utilities
+* **Recharts:** For data visualization.
+* **Lucide React:** For beautiful iconography.
+* **Date-fns:** For temporal logic and forecasting.
+
+---
+
+## 📂 Project Architecture
 
 ```bash
 src/
 ├── components/
-│   ├── chat/          # Guardian Chatbot components
-│   ├── dashboard/     # Insight Cards, Charts, Status widgets
-│   ├── rules/         # Transaction parsing logic
+│   ├── chat/          # "Ask Expenzo" chatbot implementation
+│   ├── dashboard/     # 3D Cards (Status, Insights, Forecasts)
+│   ├── rules/         # Bank statement upload & parsing dialogs
 │   └── ui/            # Reusable Shadcn UI components
-├── hooks/             # Custom hooks (useGuardianInsight, etc.)
-├── pages/             # Main application views (Dashboard, Transactions)
-├── services/          # AI Service integration layers
-├── utils/             # Core logic engines
-│   ├── bankStatementParser.ts  # Regex & Logic for PDFs
-│   ├── insightGenerator.ts     # The "Brain" of Guardian
-│   └── aiConfidence.ts         # Explainability scoring
-└── App.tsx            # Main entry point
+├── hooks/             # Custom hooks (useGuardianInsight, useAuth)
+├── services/          # API layers (Supabase, AI Service)
+├── utils/             # 🧠 THE BRAIN
+│   ├── aiConfidence.ts         # Math for calculating insight reliability
+│   ├── bankStatementParser.ts  # Regex logic for HDFC/SBI/ICICI formats
+│   ├── insightGenerator.ts     # The Heuristic Engine for anomalies
+│   └── pdfUtils.ts             # Client-side PDF extraction
+└── App.tsx            # Route definitions
