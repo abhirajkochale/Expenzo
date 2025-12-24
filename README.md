@@ -1,165 +1,104 @@
-# 🛡️ Expenzo: The AI Financial Guardian
-
-![Expenzo Banner](https://via.placeholder.com/1280x640.png?text=Expenzo+Spatial+Dashboard)
 <div align="center">
 
-[![Status](https://img.shields.io/badge/Status-Active_Development-success?style=for-the-badge)]()
-[![Version](https://img.shields.io/badge/Version-2.0.0_Spatial-blue?style=for-the-badge)]()
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+  <img src="https://via.placeholder.com/120x120.png?text=🛡️" alt="logo" width="100" height="auto" />
+  <h1>Expenzo: The AI Financial Guardian</h1>
+  
+  <p>
+    <strong>Built for the Google Developer Hackathon 2025</strong>
+  </p>
+  <p>
+    A Next-Gen Financial Operating System powered by <strong>Gemini 2.0</strong> and <strong>Flutter</strong>.
+  </p>
 
-**Not just a tracker. A financial predictive engine.**
+  <p>
+    <a href="https://flutter.dev/"><img src="https://img.shields.io/badge/Flutter-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter" /></a>
+    <a href="https://dart.dev/"><img src="https://img.shields.io/badge/Dart-0175C2?style=flat-square&logo=dart&logoColor=white" alt="Dart" /></a>
+    <a href="https://deepmind.google/technologies/gemini/"><img src="https://img.shields.io/badge/AI-Gemini_Pro-8E75B2?style=flat-square&logo=googlebard&logoColor=white" alt="Gemini AI" /></a>
+    <a href="https://aistudio.google.com/"><img src="https://img.shields.io/badge/Tuned_with-Google_AI_Studio-4285F4?style=flat-square&logo=google&logoColor=white" alt="AI Studio" /></a>
+    <a href="#"><img src="https://img.shields.io/badge/IDE-Google_Antigravity-34A853?style=flat-square&logo=googlecloud&logoColor=white" alt="Antigravity" /></a>
+    <a href="https://supabase.com/"><img src="https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white" alt="Supabase" /></a>
+  </p>
 
-[**View Demo**](https://your-demo-link.com) · [**Report Bug**](https://github.com/abhirajkochale/Expenzo/issues) · [**Request Feature**](https://github.com/abhirajkochale/Expenzo/issues)
+  <p>
+    <a href="#-google-tech-implementation">🤖 Google Tech Inside</a> •
+    <a href="#-key-features">✨ Features</a> •
+    <a href="#-system-architecture">🏗️ Architecture</a> •
+    <a href="#-getting-started">🚀 Getting Started</a>
+  </p>
 
 </div>
+
+<br />
+
+![Expenzo Showcase](image_48d13b.jpg)
 
 ---
 
 ## 📖 Introduction
 
-**Expenzo** redefines personal finance by moving beyond simple logging. It is an **AI-first "Guardian"** that actively monitors your financial health, predicts spending risks before they happen, and offers real-time strategic advice.
+**Expenzo** is an AI-first financial guardian designed to protect wealth, not just track it.
 
-Built with a **Spatial UI** design philosophy, Expenzo provides a modern, glassmorphic interface that adapts to your device, making finance feel tangible and interactive. Under the hood, it leverages a custom **Inference Engine** to parse messy Indian bank statements and detect anomalies with high precision.
+Unlike traditional banking apps that look backward, Expenzo looks forward. Built using **Flutter** for a beautiful native experience and **Google Gemini** for reasoning, it serves as a proactive analyst that parses messy Indian bank statements, detects subscription traps, and forecasts spending risks before they happen.
+
+Developed using Google's cutting-edge **Antigravity IDE**, Expenzo represents the future of agentic app development.
+
+---
+
+## 🤖 Google Tech Implementation
+
+We leveraged the full power of the Google Developer Ecosystem to build Expenzo:
+
+| Technology | Usage in Expenzo |
+| :--- | :--- |
+| **Gemini API (Pro Vision)** | The core "Guardian Engine". It parses complex PDF bank statements (HDFC, SBI) and categorizes messy Indian transaction strings (e.g., `UPI/23498/VADAPAV`) with human-level accuracy. |
+| **Google AI Studio** | Used to fine-tune system prompts for the "Ask Expenzo" chatbot, ensuring it answers financial queries ("Can I afford a trip?") without hallucinating numbers. |
+| **Flutter** | Delivers a 60FPS Spatial UI with 3D tilt effects and adaptive glassmorphism that works flawlessly on Android, iOS, and Web. |
+| **Google Antigravity** | The entire project was scaffolded and iterated upon using Google's new **Antigravity IDE**, utilizing AI agents to generate boilerplate code and refactor complex logic loops. |
 
 ---
 
 ## ✨ Key Features
 
-### 🧠 The Guardian Engine (AI Core)
-Unlike basic apps that just sum up totals, Expenzo's `insightGenerator` runs 7-layer heuristic analysis on every transaction:
-* **Anomaly Detection:** Flags single large purchases that deviate from your 30-day baseline.
-* **Subscription Traps:** Identifies recurring patterns to spot forgotten subscriptions.
-* **Velocity Checks:** Warns you if your spending *pace* (₹/day) is accelerating too fast for the month.
-* **Confidence Scoring:** Every insight comes with an "Explainability Score" (Low/Medium/High) so you know why the AI flagged it.
+### 🧠 1. The Guardian Engine (Gemini-Powered)
+A local-first inference engine that monitors your financial graph 24/7.
+* **Contextual Anomaly Detection:** Flags transactions that deviate from your personal baseline (not just generic rules).
+* **Burn Rate Velocity:** Warns if your daily spending pace (₹/day) is accelerating too fast for the month.
+* **AI Explainability:** Every insight comes with a "Confidence Score" and reasoning, so you trust the AI.
 
-### 📄 Smart Statement Parser
-* **Universal Import:** Drag-and-drop support for **PDF, CSV, and Excel** statements.
-* **Messy Data Cleaning:** Automatically cleans cryptic bank descriptions (e.g., `UPI/23498234/STARBUCKS-MUMBAI`) into clean merchants (`Starbucks`) and categories (`Food & Dining`).
-* **Regex + AI Hybrid:** Uses regex for speed and LLMs for edge cases.
+### 💬 2. "Ask Expenzo" Chatbot
+Talk to your money using natural language.
+* *"Forecast my savings for December based on last month."*
+* *"How much did I spend on Swiggy vs Zomato in 2024?"*
+* *"Identify recurring bills I might have forgotten."*
 
-### 💬 "Ask Expenzo" Chatbot
-* **Context-Aware:** The chatbot has read-access to your entire financial graph.
-* **Natural Language Queries:** * *"Can I afford a PS5 this month?"*
-    * *"How much did I spend on Swiggy vs Zomato?"*
-    * *"Forecast my savings for December."*
+### 📄 3. Smart Statement Parser
+* **Universal Import:** Drag & Drop PDF/CSV/Excel.
+* **Privacy Sandbox:** Parsing logic runs client-side using Regex + Gemini Flash for speed and privacy.
+* **Auto-Clean:** Sanitizes merchant names instantly.
 
-### 📊 Spatial Dashboard
-* **3D Tilt UI:** Interactive cards that respond to mouse movement.
-* **Adaptive Glassmorphism:** Real-time background blurs that work in both Light and Dark modes.
-* **Action Plans:** Generates 3 specific, actionable steps daily (e.g., *"Spend less than ₹400 today to stay green"*).
+### 📊 4. Spatial Flutter UI
+* **3D Cards:** Dashboard elements respond to device accelerometer/mouse movement.
+* **Smart Action Plans:** Generates 3 specific, actionable financial steps daily.
 
 ---
 
-## 📸 Screenshots
+## 🏗️ System Architecture
 
-| **Spatial Dashboard** | **Smart Import** |
-|:---:|:---:|
-| ![Dashboard](https://via.placeholder.com/600x300?text=Dashboard+Preview) <br> *Real-time financial overview with 3D tilt cards.* | ![Import](https://via.placeholder.com/600x300?text=Import+Preview) <br> *Parsing complex Indian bank statements instantly.* |
+Expenzo uses a hybrid AI architecture to balance latency and intelligence.
 
-| **Guardian Insights** | **AI Chatbot** |
-|:---:|:---:|
-| ![Insights](https://via.placeholder.com/600x300?text=Insights+Preview) <br> *AI detecting anomalies and celebrating wins.* | ![Chat](https://via.placeholder.com/600x300?text=Chat+Preview) <br> *Conversational finance with deep context.* |
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-* ![React](https://img.shields.io/badge/-React_18-61DAFB?logo=react&logoColor=black) **React 18** - Component architecture.
-* ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white) **TypeScript** - Strict type safety for financial data.
-* ![Vite](https://img.shields.io/badge/-Vite-646CFF?logo=vite&logoColor=white) **Vite** - Blazing fast build tool.
-* ![Tailwind](https://img.shields.io/badge/-Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white) **Tailwind CSS** - Styling engine.
-* ![Shadcn](https://img.shields.io/badge/-Shadcn_UI-000000?logo=shadcnui&logoColor=white) **Shadcn UI** - Premium component library.
-
-### Backend & Services
-* ![Supabase](https://img.shields.io/badge/-Supabase-3ECF8E?logo=supabase&logoColor=white) **Supabase** - PostgreSQL database, Auth, and Storage.
-* ![Gemini](https://img.shields.io/badge/-Google_Gemini-8E75B2?logo=googlebard&logoColor=white) **Google Gemini** - LLM for categorization and chat.
-
-### Utilities
-* **Recharts:** For data visualization.
-* **Lucide React:** For beautiful iconography.
-* **Date-fns:** For temporal logic and forecasting.
-
----
-
-## 📂 Project Architecture
-
-```bash
-src/
-├── components/
-│   ├── chat/          # "Ask Expenzo" chatbot implementation
-│   ├── dashboard/     # 3D Cards (Status, Insights, Forecasts)
-│   ├── rules/         # Bank statement upload & parsing dialogs
-│   └── ui/            # Reusable Shadcn UI components
-├── hooks/             # Custom hooks (useGuardianInsight, useAuth)
-├── services/          # API layers (Supabase, AI Service)
-├── utils/             # 🧠 THE BRAIN
-│   ├── aiConfidence.ts         # Math for calculating insight reliability
-│   ├── bankStatementParser.ts  # Regex logic for HDFC/SBI/ICICI formats
-│   ├── insightGenerator.ts     # The Heuristic Engine for anomalies
-│   └── pdfUtils.ts             # Client-side PDF extraction
-└── App.tsx            # Route definitions
-
-🚀 Getting Started
-Prerequisites
-Node.js v18+
-
-pnpm (recommended) or npm
-
-Installation
-Clone the repo
-
-Bash
-
-git clone [https://github.com/abhirajkochale/Expenzo.git](https://github.com/abhirajkochale/Expenzo.git)
-cd Expenzo
-Install packages
-
-Bash
-
-pnpm install
-# or npm install
-Setup Environment Create a .env file in the root:
-
-Code snippet
-
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_key
-VITE_GEMINI_API_KEY=your_gemini_key
-Run Development Server
-
-Bash
-
-pnpm run dev
-🔮 Future Roadmap
-[ ] Voice Interface: Talk to Expenzo using WebSpeech API.
-
-[ ] Multi-Currency: Automatic conversion for international travel.
-
-[ ] OCR Receipt Scanning: Upload photos of bills directly.
-
-[ ] Investment Tracking: Integration with Indian stock brokers.
-
-🤝 Contributing
-Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
-
-Fork the Project
-
-Create your Feature Branch (git checkout -b feature/AmazingFeature)
-
-Commit your Changes (git commit -m 'Add some AmazingFeature')
-
-Push to the Branch (git push origin feature/AmazingFeature)
-
-Open a Pull Request
-
-📜 License
-Distributed under the MIT License. See LICENSE for more information.
-
-<div align="center">
-
-Built with ❤️ by Abhiraj Kochale
-
-Star this repo if you find it useful! ⭐
-
-</div>
+```mermaid
+graph TD
+    User[User] -->|Interacts| Flutter[Flutter UI Layer]
+    
+    subgraph "Google Cloud / AI Layer"
+        Flutter -->|Chat Query| Gemini[Gemini Pro API]
+        Flutter -->|Raw PDF| Vision[Gemini Vision (Parsing)]
+        Gemini -->|Structured Data| AIStudio[Prompt Context (AI Studio)]
+    end
+    
+    subgraph "Data & Logic"
+        Flutter -->|Cache/Auth| Supabase[Supabase DB]
+        Gemini -->|Insights| Guardian[Guardian Logic Engine]
+    end
+    
+    Guardian -->|Alerts| Flutter
