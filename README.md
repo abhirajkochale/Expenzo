@@ -1,6 +1,7 @@
 <div align="center">
 
 <img src="assets/images/expenzo-logo.png" alt="Expenzo Logo" width="200"/>
+#
 ### AI-Powered Financial Guardian
 
 *Your personal AI financial analyst that predicts trends, detects anomalies, and helps you build wealth.*
