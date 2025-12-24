@@ -263,19 +263,26 @@ The application will open at `http://localhost:5173`
 - Track progress in real-time
 - Receive alerts when approaching limits
 
-### Screenshots
+### 📸 Screenshots
 
-````carousel
+<div align="center">
+
+#### Landing Page
 ![Landing Page - Futuristic AR/VR inspired design with glassmorphism effects](assets/images/landing-page.png)
-<!-- slide -->
+
+#### Dashboard Overview
 ![Dashboard - Complete financial overview with AI insights and spending analytics](assets/images/dashboard.png)
-<!-- slide -->
+
+#### Guardian AI Assistant
 ![Guardian AI - Smart action plans and real-time anomaly detection](assets/images/guardian-ai.png)
-<!-- slide -->
+
+#### Spending Limits & Budget Tracking
 ![Spending Limits - Budget tracking with AI-optimized recommendations](assets/images/spending-limits.png)
-<!-- slide -->
+
+#### SMS Transaction Parser
 ![SMS Parser - Intelligent transaction extraction from bank SMS](assets/images/sms-parser.png)
-````
+
+</div>
 
 ---
 
