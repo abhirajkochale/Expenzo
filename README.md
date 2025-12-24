@@ -99,3 +99,67 @@ src/
 │   ├── insightGenerator.ts     # The Heuristic Engine for anomalies
 │   └── pdfUtils.ts             # Client-side PDF extraction
 └── App.tsx            # Route definitions
+
+🚀 Getting Started
+Prerequisites
+Node.js v18+
+
+pnpm (recommended) or npm
+
+Installation
+Clone the repo
+
+Bash
+
+git clone [https://github.com/abhirajkochale/Expenzo.git](https://github.com/abhirajkochale/Expenzo.git)
+cd Expenzo
+Install packages
+
+Bash
+
+pnpm install
+# or npm install
+Setup Environment Create a .env file in the root:
+
+Code snippet
+
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_key
+VITE_GEMINI_API_KEY=your_gemini_key
+Run Development Server
+
+Bash
+
+pnpm run dev
+🔮 Future Roadmap
+[ ] Voice Interface: Talk to Expenzo using WebSpeech API.
+
+[ ] Multi-Currency: Automatic conversion for international travel.
+
+[ ] OCR Receipt Scanning: Upload photos of bills directly.
+
+[ ] Investment Tracking: Integration with Indian stock brokers.
+
+🤝 Contributing
+Contributions make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
+
+Fork the Project
+
+Create your Feature Branch (git checkout -b feature/AmazingFeature)
+
+Commit your Changes (git commit -m 'Add some AmazingFeature')
+
+Push to the Branch (git push origin feature/AmazingFeature)
+
+Open a Pull Request
+
+📜 License
+Distributed under the MIT License. See LICENSE for more information.
+
+<div align="center">
+
+Built with ❤️ by Abhiraj Kochale
+
+Star this repo if you find it useful! ⭐
+
+</div>
