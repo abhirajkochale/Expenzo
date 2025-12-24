@@ -1,14 +1,9 @@
-/**
- * Guardian Insight Generator
- * Generates proactive AI insights based on transaction data
- */
-
 import { Transaction, CategoryType, CATEGORY_METADATA } from '@/types/types';
 import { subDays, isAfter, isBefore } from 'date-fns';
 import { GuardianInsight } from '@/components/dashboard/GuardianInsightCard';
 import { calculateConfidence, generateExplanation } from './aiConfidence';
 
-// Helper to create the EXACT object structure TS demands for ConfidenceScore
+// Helper to satisfy strict TypeScript requirements
 const getConfidence = (level: 'low' | 'medium' | 'high', score: number) => ({
   level,
   score,
@@ -45,7 +40,6 @@ function analyzeTransactions(transactions: Transaction[]): SpendingAnalysis {
   transactions.forEach(txn => {
     const txnDate = new Date(txn.date);
 
-    // Monthly
     if (isAfter(txnDate, thirtyDaysAgo)) {
       if (txn.type === 'income') {
         totalIncome += txn.amount;
@@ -56,13 +50,11 @@ function analyzeTransactions(transactions: Transaction[]): SpendingAnalysis {
       }
     }
 
-    // Weekly
     if (txn.type === 'expense' && isAfter(txnDate, sevenDaysAgo)) {
       const current = weeklySpending.get(txn.category) || 0;
       weeklySpending.set(txn.category, current + txn.amount);
     }
 
-    // Previous Week
     if (
       txn.type === 'expense' &&
       isAfter(txnDate, fourteenDaysAgo) &&
@@ -98,7 +90,6 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
 
   const analysis = analyzeTransactions(transactions);
   
-  // Base confidence for generic cases
   const baseConfidence = calculateConfidence({
     transactionCount: transactions.length,
     daysOfData: 30,
@@ -118,12 +109,14 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
     return {
       type: 'info',
       title: 'Large Transaction Detected',
-      message: `We noticed a payment of ₹${Number(recentBigTxn.amount).toLocaleString()} for "${recentBigTxn.description || categoryMeta.label}". Was this planned?`,
+      message: `We noticed a payment of ₹${Number(recentBigTxn.amount).toLocaleString()} for "${recentBigTxn.description || categoryMeta.label}".`,
       icon: 'sparkles',
       emoji: '👀',
       explanation: {
-          confidence: getConfidence('medium', 0.8), 
-          recommendation: 'If this was a bill, mark it as "Recurring" to improve accuracy.'
+          confidence: getConfidence('medium', 0.8),
+          dataUsed: ['Recent transactions', 'Amount threshold analysis'],
+          patternDetected: 'Single large outlier transaction',
+          whyNow: 'This transaction occurred within the last 7 days.'
       }
     };
   }
@@ -135,12 +128,14 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
       return {
         type: 'warning',
         title: `High Spend in ${categoryMeta.label}`,
-        message: `You've spent ₹${amount.toLocaleString()} on ${categoryMeta.label.toLowerCase()} this month. That's ${Math.round((amount / analysis.totalExpenses) * 100)}% of your total spending!`,
+        message: `You've spent ₹${amount.toLocaleString()} on ${categoryMeta.label.toLowerCase()} this month.`,
         icon: 'alert',
         emoji: '🚨',
         explanation: {
             confidence: getConfidence('high', 0.95),
-            recommendation: `Try setting a specific limit for ${categoryMeta.label.toLowerCase()} next month.`
+            dataUsed: ['Monthly category totals', 'Total expense ratio'],
+            patternDetected: 'Category dominance > 40%',
+            whyNow: 'Spending in this category has exceeded safe diversity limits.'
         }
       };
     }
@@ -159,17 +154,15 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
         return {
           type: 'warning',
           title: `Your ${categoryMeta.label.toLowerCase()} spending spiked`,
-          message: `You spent ₹${Math.round(increase)} more this week compared to last week. Just checking in.`,
+          message: `You spent ₹${Math.round(increase)} more this week compared to last week.`,
           icon: 'trending-up',
           emoji: categoryMeta.icon,
-          explanation: generateExplanation({
-            insightType: 'category_spike',
-            category: categoryMeta.label,
-            amount: weeklyAmount,
-            baseline: previousAmount,
-            timeframe: 'week',
-            confidence: baseConfidence,
-          })
+          explanation: {
+            confidence: getConfidence('medium', 0.85),
+            dataUsed: ['Weekly comparison', 'Category history'],
+            patternDetected: 'Sudden velocity increase',
+            whyNow: `Spending velocity increased by ${Math.round(increasePercent)}% this week.`
+          }
         };
       }
     }
@@ -188,17 +181,15 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
         return {
           type: 'success',
           title: `Your ${categoryMeta.label.toLowerCase()} spending dropped!`,
-          message: `You spent ₹${Math.round(savings)} less this week. Whatever you're doing, it's working!`,
+          message: `You spent ₹${Math.round(savings)} less this week.`,
           icon: 'trending-down',
           emoji: categoryMeta.icon,
-          explanation: generateExplanation({
-            insightType: 'pattern',
-            category: categoryMeta.label,
-            amount: weeklyAmount,
-            baseline: previousAmount,
-            timeframe: 'week',
-            confidence: baseConfidence,
-          })
+          explanation: {
+            confidence: getConfidence('high', 0.9),
+            dataUsed: ['Weekly comparison', 'Category history'],
+            patternDetected: 'Positive spending reduction',
+            whyNow: `You successfully reduced spending by ${Math.round(savingsPercent)}%.`
+          }
         };
       }
     }
@@ -209,14 +200,15 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
     return {
       type: 'achievement',
       title: `You're saving ${Math.round(analysis.savingsRate)}% of your income`,
-      message: `That's a surplus of ₹${Math.round(analysis.totalIncome - analysis.totalExpenses)} this month. You're doing great!`,
+      message: `That's a surplus of ₹${Math.round(analysis.totalIncome - analysis.totalExpenses)} this month.`,
       icon: 'check',
       emoji: '🏆',
-      explanation: generateExplanation({
-        insightType: 'pattern',
-        timeframe: 'month',
-        confidence: baseConfidence,
-      })
+      explanation: {
+        confidence: getConfidence('high', 0.95),
+        dataUsed: ['Income vs Expense', 'Monthly totals'],
+        patternDetected: 'High savings rate',
+        whyNow: 'Your income to expense ratio is exceptionally healthy this month.'
+      }
     };
   }
 
@@ -225,12 +217,14 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
      return {
         type: 'achievement',
         title: 'Frugal Month!',
-        message: `Your total spending is remarkably low (₹${analysis.totalExpenses.toLocaleString()}). Keep up the discipline!`,
+        message: `Your total spending is remarkably low (₹${analysis.totalExpenses.toLocaleString()}).`,
         icon: 'check',
         emoji: '🛡️',
         explanation: {
             confidence: getConfidence('high', 0.9),
-            recommendation: 'This is a great time to invest the surplus.'
+            dataUsed: ['Total monthly outflow'],
+            patternDetected: 'Low spending velocity',
+            whyNow: 'Your total expenses are significantly below average.'
         }
      };
   }
@@ -239,7 +233,7 @@ export function generateGuardianInsight(transactions: Transaction[]): GuardianIn
   return {
     type: 'info',
     title: 'All Systems Nominal',
-    message: 'No anomalies detected in your recent transactions. Your spending patterns look healthy.',
+    message: 'No anomalies detected in your recent transactions.',
     icon: 'check',
     emoji: '✅',
   };
