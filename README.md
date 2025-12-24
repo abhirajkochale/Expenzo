@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ Expenzo
+<img src="assets/images/expenzo-logo.png" alt="Expenzo Logo" width="200"/>
 
 ### AI-Powered Financial Guardian
 
