@@ -1,0 +1,20 @@
+﻿Name: repoatlas
+Version: 0.0.1
+Summary: Repository maps for coding AI agents. Parses code, builds dependency graphs, ranks files by importance, and outputs structured maps for LLM context windows. Git-aware incremental indexing. Built for new and legacy codebases.
+Home-page: https://repoatlas.com
+Author: Mariusz Korzekwa
+Author-email: 
+License: Apache-2.0
+Location: C:\Users\Kshitij Parkhe\AppData\Local\Programs\Python\Python313\Lib\site-packages
+Requires: 
+Required-by: 
+Files:
+  repoatlas-0.0.1.dist-info\INSTALLER
+  repoatlas-0.0.1.dist-info\LICENSE
+  repoatlas-0.0.1.dist-info\METADATA
+  repoatlas-0.0.1.dist-info\RECORD
+  repoatlas-0.0.1.dist-info\REQUESTED
+  repoatlas-0.0.1.dist-info\WHEEL
+  repoatlas-0.0.1.dist-info\top_level.txt
+  repoatlas\__init__.py
+  repoatlas\__pycache__\__init__.cpython-313.pyc

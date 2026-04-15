@@ -1,7 +1,6 @@
-const APP_ID = import.meta.env.VITE_APP_ID;
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const API_URL =
-  'https://api-integrations.appmedo.com/app-8d7tss4r45j5/api-rLob8RdzAOl9/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 const SYSTEM_PROMPT = `
 You are Expenzo — a personal AI financial advisor for an Indian user.
@@ -28,10 +27,13 @@ and category-wise financial data.
 `;
 
 export class AIService {
-  // Store the active controller to cancel previous requests
+  private genAI: GoogleGenerativeAI;
   private abortController: AbortController | null = null;
 
-  // 1. CHATBOT STREAMING METHOD
+  constructor() {
+    this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  }
+
   async sendMessageWithContext(
     userMessage: string,
     context: any,
@@ -39,119 +41,72 @@ export class AIService {
     onComplete: () => void,
     onError: (err: string) => void
   ) {
-    // Cancel any previous ongoing request to prevent double responses
     if (this.abortController) {
       this.abortController.abort();
     }
-    
-    // Create a new controller for the current request
     this.abortController = new AbortController();
-    const signal = this.abortController.signal;
 
     try {
-      const prompt = `
-User Question:
-${userMessage}
+      if (!GEMINI_API_KEY) {
+        onError("Expenzo Core is offline: Missing Gemini API Key. Please add VITE_GEMINI_API_KEY to your Vercel Environment Variables or local .env file.");
+        return;
+      }
 
-Financial Context:
+      // Explicitly fuse context and prompt so Expenzo has perfect access to user data
+      const enrichedPrompt = `
+User Data Context:
 ${JSON.stringify(context, null, 2)}
 
-Answer naturally as Expenzo.
+User's Requested Query:
+${userMessage}
+
+Answer naturally and briefly as Expenzo using the context provided above.
 `;
 
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-App-Id': APP_ID,
-        },
-        body: JSON.stringify({
-          contents: [
-            { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-            { role: 'user', parts: [{ text: prompt }] },
-          ],
-        }),
-        signal, // Attach the signal here
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+        systemInstruction: SYSTEM_PROMPT,
       });
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
+      const result = await model.generateContentStream(enrichedPrompt);
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const json = line.replace('data: ', '');
-          if (json === '[DONE]') continue;
-
-          const parsed = JSON.parse(json);
-          const text =
-            parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) onChunk(text);
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          onChunk(chunkText);
         }
       }
 
       onComplete();
+
     } catch (e: any) {
-      // Ignore errors caused by aborting the previous request
       if (e.name === 'AbortError') return;
-      onError(e.message);
+      console.error("Gemini API Error:", e);
+      
+      const errMsg = e?.message?.toLowerCase() || "";
+      if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("too many requests")) {
+        onError("Expenzo is currently experiencing heavy traffic and rate limits from Google AI. Please try again in exactly one minute.");
+      } else if (errMsg.includes("403") || errMsg.includes("leaked") || errMsg.includes("permission denied")) {
+        onError("Your Gemini API Key has been disabled by Google due to a leak or being restricted. Please update your Vercel Environment key with a new one.");
+      } else if (errMsg.includes("404")) {
+        onError("Model not found. Please ensure your API key has access to the Gemini 2.0 Flash generation models in Google AI Studio.");
+      } else {
+        onError(`Expenzo encountered a generation error: ${e.message || "Unknown Failure"}`);
+      }
     } finally {
-      // Clean up the controller
       this.abortController = null;
     }
   }
 
-  // 2. NEW METHOD FOR PDF PARSING (MUST BE PRESENT)
   async generateText(prompt: string): Promise<string> {
+    if (!GEMINI_API_KEY) return "";
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-App-Id': APP_ID,
-        },
-        body: JSON.stringify({
-          contents: [
-            // Specialized prompt for data extraction
-            { 
-              role: 'system', 
-              parts: [{ text: "You are a precise data extraction engine. Output ONLY raw JSON. Do not use Markdown." }] 
-            },
-            { role: 'user', parts: [{ text: prompt }] },
-          ],
-        }),
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+        systemInstruction: "You are a precise data extraction engine. Output ONLY raw JSON. Do not use Markdown."
       });
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue;
-          const json = line.replace('data: ', '');
-          if (json === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(json);
-            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) fullText += text;
-          } catch (e) {
-            // Ignore partial errors
-          }
-        }
-      }
-
-      return fullText;
-
+      const result = await model.generateContent(prompt);
+      return result.response.text();
     } catch (e: any) {
       console.error("AI Generation Error:", e);
       throw new Error(e.message);
