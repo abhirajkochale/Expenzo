@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import { TransactionDialog } from '@/components/transactions/TransactionDialog';
 import { SMSParserDialog } from '@/components/transactions/SMSParserDialog';
+import { VoiceTransactionDialog } from '@/components/transactions/VoiceTransactionDialog';
 import { BankStatementUploadDialog } from '@/components/transactions/BankStatementUploadDialog';
 import { MerchantInsightSheet } from '@/components/merchants/MerchantInsightSheet';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import {
   ChevronRight,
   Trash2,
   AlertTriangle,
+  Mic,
 } from 'lucide-react';
 import { transactionApi } from '@/db/api';
 import { Transaction, CATEGORY_METADATA } from '@/types/types';
@@ -143,6 +145,7 @@ export default function TransactionsPage() {
   // Dialog States
   const [dialogOpen, setDialogOpen] = useState(false);
   const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
   const [merchantSheetOpen, setMerchantSheetOpen] = useState(false);
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null);
@@ -355,6 +358,13 @@ export default function TransactionsPage() {
               onClick={() => setSmsDialogOpen(true)}
             >
               <Sparkles className="mr-2 h-4 w-4 text-purple-500" /> Parse SMS
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-white/50 dark:bg-white/5 border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 backdrop-blur-sm h-10 w-full sm:w-auto"
+              onClick={() => setVoiceDialogOpen(true)}
+            >
+              <Mic className="mr-2 h-4 w-4" /> Voice Entry
             </Button>
             <Button 
                 onClick={() => setDialogOpen(true)}
@@ -571,6 +581,11 @@ export default function TransactionsPage() {
       <SMSParserDialog
         open={smsDialogOpen}
         onOpenChange={setSmsDialogOpen}
+        onSuccess={loadTransactions}
+      />
+      <VoiceTransactionDialog
+        open={voiceDialogOpen}
+        onOpenChange={setVoiceDialogOpen}
         onSuccess={loadTransactions}
       />
       <BankStatementUploadDialog

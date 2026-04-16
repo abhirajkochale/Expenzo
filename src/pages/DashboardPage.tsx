@@ -6,13 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { FinancialHealthGauge } from '@/components/dashboard/FinancialHealthGauge';
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
 import { 
-  Plus, Bot, Sparkles, ArrowUpRight, ArrowDownRight, Filter, CalendarDays,
+  Plus, Bot, Sparkles, Filter, CalendarDays,
   AlertTriangle, TrendingUp, Calendar, Lightbulb, ShieldCheck, Target,
-  Search, ArrowRight, Cpu, Send, Wallet, Activity
+  Search, ArrowRight, Wallet, Activity
 } from 'lucide-react';
 import { transactionApi } from '@/db/api';
 import { CategorySpend, Transaction, CATEGORY_METADATA, CategoryType } from '@/types/types';
@@ -604,9 +605,12 @@ export default function DashboardPage() {
         </div>
 
 
-        {/* 3. GRID: ACTION PLAN & GUARDIAN ANALYSIS */}
-        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+        {/* 3. GRID: ACTION PLAN, GUARDIAN ANALYSIS, HEALTH SCORE */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             
+            {/* Health Score Gauge */}
+            <FinancialHealthGauge transactions={allTransactions} currentMonthKey={selectedMonth} />
+
             {/* Action Plan */}
             <Card className="glass-card border-l-4 border-l-purple-500">
               <CardHeader className="pb-2">

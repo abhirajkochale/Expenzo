@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileNav } from './MobileNav';
 import { FloatingChatButton } from '@/components/chat/FloatingChatButton';
+import { FloatingVoiceButton } from '@/components/transactions/FloatingVoiceButton';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -32,6 +33,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       <MobileNav />
       <FloatingChatButton />
+      <FloatingVoiceButton />
     </div>
   );
 }
