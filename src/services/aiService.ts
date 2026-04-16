@@ -2,6 +2,13 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
+// Ordered fallback chain — if one model is quota-limited, the next is tried automatically
+const MODEL_FALLBACK_CHAIN = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-pro",
+];
+
 const SYSTEM_PROMPT = `
 You are Expenzo — a personal AI financial advisor for an Indian user.
 
@@ -34,6 +41,10 @@ export class AIService {
     this.genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   }
 
+  /**
+   * Tries each model in the fallback chain until one succeeds.
+   * This ensures the chatbot ALWAYS responds even if one model's quota is exhausted.
+   */
   async sendMessageWithContext(
     userMessage: string,
     context: any,
@@ -46,14 +57,12 @@ export class AIService {
     }
     this.abortController = new AbortController();
 
-    try {
-      if (!GEMINI_API_KEY) {
-        onError("Expenzo Core is offline: Missing Gemini API Key. Please add VITE_GEMINI_API_KEY to your Vercel Environment Variables or local .env file.");
-        return;
-      }
+    if (!GEMINI_API_KEY) {
+      onError("Expenzo Core is offline: Missing Gemini API Key. Please add VITE_GEMINI_API_KEY to your environment.");
+      return;
+    }
 
-      // Explicitly fuse context and prompt so Expenzo has perfect access to user data
-      const enrichedPrompt = `
+    const enrichedPrompt = `
 User Data Context:
 ${JSON.stringify(context, null, 2)}
 
@@ -63,54 +72,84 @@ ${userMessage}
 Answer naturally and briefly as Expenzo using the context provided above.
 `;
 
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        systemInstruction: SYSTEM_PROMPT,
-      });
+    let lastError: any = null;
 
-      const result = await model.generateContentStream(enrichedPrompt);
+    for (const modelName of MODEL_FALLBACK_CHAIN) {
+      try {
+        console.log(`[Expenzo] Trying model: ${modelName}`);
 
-      for await (const chunk of result.stream) {
-        const chunkText = chunk.text();
-        if (chunkText) {
-          onChunk(chunkText);
+        const model = this.genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: SYSTEM_PROMPT,
+        });
+
+        const result = await model.generateContentStream(enrichedPrompt);
+
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            onChunk(chunkText);
+          }
         }
-      }
 
-      onComplete();
+        // If we reach here, the model succeeded — exit the loop
+        console.log(`[Expenzo] Success with model: ${modelName}`);
+        onComplete();
+        return;
 
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      console.error("Gemini API Error:", e);
-      
-      const errMsg = e?.message?.toLowerCase() || "";
-      if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("too many requests")) {
-        onError("Expenzo is currently experiencing heavy traffic and rate limits from Google AI. Please try again in exactly one minute.");
-      } else if (errMsg.includes("403") || errMsg.includes("leaked") || errMsg.includes("permission denied")) {
-        onError("Your Gemini API Key has been disabled by Google due to a leak or being restricted. Please update your Vercel Environment key with a new one.");
-      } else if (errMsg.includes("404")) {
-        onError("Model not found. Please ensure your API key has access to the Gemini 2.0 Flash generation models in Google AI Studio.");
-      } else {
-        onError(`Expenzo encountered a generation error: ${e.message || "Unknown Failure"}`);
+      } catch (e: any) {
+        lastError = e;
+        const errMsg = e?.message?.toLowerCase() || "";
+        const isQuotaError = errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("too many");
+        const isNotFoundError = errMsg.includes("404") || errMsg.includes("not found");
+
+        if (isQuotaError || isNotFoundError) {
+          console.warn(`[Expenzo] Model ${modelName} failed (${isQuotaError ? '429 quota' : '404 not found'}), trying next...`);
+          continue; // Try the next model in the chain
+        }
+
+        // For non-quota/404 errors (like 403 leaked key), stop immediately
+        break;
       }
-    } finally {
-      this.abortController = null;
     }
+
+    // All models exhausted or a hard error occurred
+    console.error("[Expenzo] All models failed. Last error:", lastError);
+    const errMsg = lastError?.message?.toLowerCase() || "";
+
+    if (errMsg.includes("403") || errMsg.includes("leaked") || errMsg.includes("permission")) {
+      onError("Your Gemini API Key has been disabled by Google. Please generate a new key from Google AI Studio and update your environment variables.");
+    } else if (errMsg.includes("429") || errMsg.includes("quota")) {
+      onError("All available AI models are currently rate-limited. Please wait a minute and try again, or use a different API key.");
+    } else {
+      onError(`Expenzo encountered an error: ${lastError?.message || "Unknown failure"}`);
+    }
+
+    this.abortController = null;
   }
 
   async generateText(prompt: string): Promise<string> {
     if (!GEMINI_API_KEY) return "";
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        systemInstruction: "You are a precise data extraction engine. Output ONLY raw JSON. Do not use Markdown."
-      });
-      const result = await model.generateContent(prompt);
-      return result.response.text();
-    } catch (e: any) {
-      console.error("AI Generation Error:", e);
-      throw new Error(e.message);
+
+    for (const modelName of MODEL_FALLBACK_CHAIN) {
+      try {
+        const model = this.genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: "You are a precise data extraction engine. Output ONLY raw JSON. Do not use Markdown.",
+        });
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+      } catch (e: any) {
+        const errMsg = e?.message?.toLowerCase() || "";
+        if (errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("404") || errMsg.includes("not found")) {
+          console.warn(`[Expenzo generateText] Model ${modelName} unavailable, trying next...`);
+          continue;
+        }
+        throw e;
+      }
     }
+
+    throw new Error("All AI models are currently unavailable.");
   }
 }
 
