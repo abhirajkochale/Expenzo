@@ -163,8 +163,8 @@ Answer naturally and briefly as Expenzo using the context provided above.
       Return ONLY a JSON object with:
       - amount (number)
       - merchant (string)
-      - category (string - e.g. Food, Transport, Shopping, Bills, etc.)
-      - type ("credit" or "debit")
+      - category (string - e.g. food, travel, shopping, utilities, etc.)
+      - type ("income" or "expense")
       - timestamp (current ISO string: ${new Date().toISOString()})
     `;
 

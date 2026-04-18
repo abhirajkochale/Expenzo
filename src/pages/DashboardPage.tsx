@@ -386,10 +386,16 @@ export default function DashboardPage() {
       if (isTxn && (text !== localStorage.getItem('last_parsed_clipboard') || manual)) {
         setClipboardTxn(text);
         if (manual) {
-           toast({ title: "Transaction Found!", description: "Smart banner appeared at the top." });
+           toast({ title: "Signal Found!", description: "Financial signal detected. See the green banner above." });
         }
       } else if (manual) {
-        toast({ title: "No Transaction Found", description: "The text doesn't look like a standard transaction message." });
+        // If manual and text exists, let it try anyway even if heuristic fails slightly
+        if (text.length > 10 && text.length < 1000) {
+           setClipboardTxn(text);
+           toast({ title: "Analyzing text...", description: "AI is checking for hidden transactions." });
+        } else {
+           toast({ title: "No Transaction Found", description: "The text doesn't look like a standard transaction message." });
+        }
       } else {
         setClipboardTxn(null);
       }
@@ -412,25 +418,36 @@ export default function DashboardPage() {
   }, [autoDetect]);
 
   const handleHandleClipboardTxn = async () => {
-    if (!clipboardTxn) return;
-    localStorage.setItem('last_parsed_clipboard', clipboardTxn);
     const textToParse = clipboardTxn;
+    if (!textToParse) return;
+
     setClipboardTxn(null);
+    localStorage.setItem('last_parsed_clipboard', textToParse);
 
     toast({
-      title: "Processing Clipboard...",
+      title: "Analyzing with Gemini...",
       description: "AI is extracting transaction details.",
     });
 
     try {
       const parsed = await aiService.parseTransactionWithAI(textToParse);
-      if (parsed && parsed.amount > 0) {
+      
+      if (parsed && (parsed.amount > 0 || parsed.merchant)) {
+        // Normalize type to match DB constraints
+        const normalizedType = (parsed.type === 'credit' || parsed.type === 'income') ? 'income' : 'expense';
+        
+        // Normalize category to lowercase valid key
+        const validCategories = ['food', 'travel', 'shopping', 'utilities', 'subscriptions', 'rent', 'healthcare', 'salary', 'investment', 'education', 'transport', 'entertainment', 'other'];
+        const normalizedCategory = validCategories.includes(parsed.category?.toLowerCase()) 
+          ? parsed.category.toLowerCase() 
+          : 'other';
+
         await transactionApi.create({
-          amount: parsed.amount,
-          description: `Clipboard: ${parsed.merchant}`,
-          merchant: parsed.merchant,
-          category: parsed.category || 'other',
-          type: parsed.type || 'expense',
+          amount: parsed.amount || 0,
+          description: `Clipboard: ${parsed.merchant || 'Unknown Merchant'}`,
+          merchant: parsed.merchant || 'Unknown',
+          category: normalizedCategory,
+          type: normalizedType,
           date: parsed.timestamp || new Date().toISOString(),
           account_id: undefined
         });
@@ -438,11 +455,14 @@ export default function DashboardPage() {
           title: "Added Successfully!",
           description: `₹${parsed.amount} for ${parsed.merchant} via clipboard.`,
         });
+      } else {
+        throw new Error("AI could not find a valid transaction.");
       }
-    } catch (err) {
+    } catch (err: any) {
+      logger.error(`[Dashboard] Clipboard parse error`, { error: err.message });
       toast({
         title: "Parsing Failed",
-        description: "Could not read transaction from clipboard.",
+        description: err.message || "Could not read transaction from clipboard.",
         variant: "destructive"
       });
     }

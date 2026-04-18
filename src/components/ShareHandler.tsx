@@ -48,12 +48,22 @@ export default function ShareHandler() {
         }
 
         setStatus('saving');
+        
+        // Normalize type to match DB constraints
+        const normalizedType = (parsed.type === 'credit' || parsed.type === 'income') ? 'income' : 'expense';
+        
+        // Normalize category to lowercase valid key
+        const validCategories = ['food', 'travel', 'shopping', 'utilities', 'subscriptions', 'rent', 'healthcare', 'salary', 'investment', 'education', 'transport', 'entertainment', 'other'];
+        const normalizedCategory = validCategories.includes(parsed.category?.toLowerCase()) 
+          ? parsed.category.toLowerCase() 
+          : 'other';
+
         await transactionApi.create({
           amount: parsed.amount,
           description: `Shared via PWA: ${parsed.merchant}`,
           merchant: parsed.merchant,
-          category: parsed.category || 'other',
-          type: parsed.type || 'expense',
+          category: normalizedCategory,
+          type: normalizedType,
           date: parsed.timestamp || new Date().toISOString(),
           account_id: undefined
         });
