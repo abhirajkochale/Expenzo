@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { MainLayout } from './layouts/MainLayout';
+import { logger } from '@/utils/logger';
 
 export default function ShareHandler() {
   const [searchParams] = useSearchParams();
@@ -16,9 +17,21 @@ export default function ShareHandler() {
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    const rawText = searchParams.get('text') || searchParams.get('title');
+    // Broad search for shared text across common keys
+    const rawText = searchParams.get('text') || 
+                    searchParams.get('title') || 
+                    searchParams.get('body') || 
+                    searchParams.get('description') || 
+                    searchParams.get('link');
     
+    logger.log('[ShareHandler] Params detected', { 
+      fullUrl: window.location.href,
+      keys: Array.from(searchParams.keys()),
+      detectedText: rawText 
+    });
+
     if (!rawText) {
+      logger.warn('[ShareHandler] No text found in share params');
       navigate('/dashboard');
       return;
     }

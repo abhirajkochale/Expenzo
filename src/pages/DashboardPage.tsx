@@ -23,9 +23,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Transaction, CategorySpend, CategoryType } from '@/types/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { Smartphone, Clipboard, Copy } from 'lucide-react';
+import { Smartphone, Clipboard, Copy, RotateCcw, Terminal, Trash2 } from 'lucide-react';
 import { aiService } from '@/services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '@/utils/logger';
 
 // --- TYPES ---
 interface AIInsight {
@@ -343,31 +344,71 @@ export default function DashboardPage() {
     }
   };
 
+  // --- 🪄 Diagnostic Console Logic ---
+  const [logs, setLogs] = useState(logger.getLogs());
+  const [showLogs, setShowLogs] = useState(false);
+
+  useEffect(() => {
+    const updateLogs = () => setLogs(logger.getLogs());
+    window.addEventListener('expenzo_log_added', updateLogs);
+    return () => window.removeEventListener('expenzo_log_added', updateLogs);
+  }, []);
+
   // --- 💡 Magic Clipboard Detection ---
   const [clipboardTxn, setClipboardTxn] = useState<string | null>(null);
   
-  const checkClipboard = async () => {
-    if (!autoDetect) return; // Only check if auto-detect is enabled globally
+  const checkClipboard = async (manual = false) => {
+    if (!autoDetect && !manual) return;
     try {
+      logger.log(`[Dashboard] Checking clipboard ${manual ? '(Manual)' : '(Auto)'}`);
       const text = await navigator.clipboard.readText();
-      const lowerText = text.toLowerCase();
-      // Heuristic for transactions
-      const isTxn = (lowerText.includes('paid') || lowerText.includes('received') || text.includes('₹') || lowerText.includes('rs.')) && 
-                   !lowerText.includes('request') && text.length < 500;
       
-      if (isTxn && text !== localStorage.getItem('last_parsed_clipboard')) {
+      if (!text) {
+        if (manual) toast({ title: "Clipboard Empty", description: "Could not find any text to parse." });
+        return;
+      }
+
+      const lowerText = text.toLowerCase();
+      // Broadened transaction words for Indian context (Bank names, Txn IDs)
+      const isTxn = (
+        lowerText.includes('paid') || 
+        lowerText.includes('received') || 
+        lowerText.includes('sent') ||
+        text.includes('₹') || 
+        text.includes('Rs.') ||
+        lowerText.includes('debited') ||
+        lowerText.includes('credited') ||
+        lowerText.includes('txn')
+      ) && !lowerText.includes('request') && text.length < 500;
+      
+      logger.log(`[Dashboard] Content detected: ${isTxn ? 'Transaction-like' : 'Generic'}`, { text: text.substring(0, 30) + '...' });
+
+      if (isTxn && (text !== localStorage.getItem('last_parsed_clipboard') || manual)) {
         setClipboardTxn(text);
+        if (manual) {
+           toast({ title: "Transaction Found!", description: "Smart banner appeared at the top." });
+        }
+      } else if (manual) {
+        toast({ title: "No Transaction Found", description: "The text doesn't look like a standard transaction message." });
       } else {
         setClipboardTxn(null);
       }
-    } catch (err) {
-      // Permission denied or not supported
+    } catch (err: any) {
+      logger.error(`[Dashboard] Clipboard access failed`, { error: err.message });
+      if (manual) {
+        toast({ 
+          title: "Permission Denied", 
+          description: "Browser blocked clipboard access. Check site permissions.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   useEffect(() => {
-    window.addEventListener('focus', checkClipboard);
-    return () => window.removeEventListener('focus', checkClipboard);
+    const handleFocus = () => checkClipboard(false);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [autoDetect]);
 
   const handleHandleClipboardTxn = async () => {
@@ -725,12 +766,22 @@ export default function DashboardPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Detect UPI SMS & Notifications</p>
                   </div>
                </div>
-               <Switch 
-                  id="auto-detect" 
-                  checked={autoDetect}
-                  onCheckedChange={handleToggleAutoDetect}
-                  className="data-[state=checked]:bg-emerald-600"
-               />
+               <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-gray-400 hover:text-emerald-600"
+                    onClick={() => checkClipboard(true)}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Switch 
+                    id="auto-detect" 
+                    checked={autoDetect}
+                    onCheckedChange={handleToggleAutoDetect}
+                    className="data-[state=checked]:bg-emerald-600"
+                  />
+               </div>
             </div>
 
             <div onClick={handleHandleClipboardTxn} className="glass-card rounded-3xl p-6 flex items-center justify-between border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-colors group">
@@ -766,40 +817,87 @@ export default function DashboardPage() {
                       <div className={`p-2 rounded-lg ${action.color}`}><action.icon className="h-5 w-5" /></div>
                       <div>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{action.text}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">{action.subtext}</p>
+                        <p className="text-[10px] text-gray-500 font-medium">{action.subtext}</p>
                       </div>
                     </div>
                 ))}
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-l-4 border-l-emerald-500 text-gray-900 dark:text-white">
-               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  Insights
+            <Card className="glass-card border-l-4 border-l-orange-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+                  <Lightbulb className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  AI Predictions
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {aiAnalysis.length === 0 ? <p className="text-sm text-gray-500">All systems good.</p> : (
-                  <div className="space-y-3">
-                    {aiAnalysis.map((insight, index) => (
-                      <div key={index} className="flex items-start gap-4 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-white/5">
-                         <div className={`p-2 rounded-lg shrink-0 ${insight.color}`}><insight.icon className="h-5 w-5" /></div>
-                         <div className="flex-1">
-                           <p className="text-sm font-bold">{insight.title}</p>
-                           <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{insight.description}</p>
-                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent className="space-y-4 mt-2">
+                 <div className="flex gap-4 p-4 rounded-xl bg-orange-100/50 dark:bg-orange-500/10 border border-orange-200/50 dark:border-orange-500/20">
+                    <div className="h-10 w-10 flex-shrink-0 bg-white dark:bg-white/10 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400"><TrendingUp className="h-5 w-5" /></div>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 font-medium leading-relaxed">{summaryData.predictionText || "Add more data for accurate month-end predictions."}</p>
+                 </div>
+
+                 <Button variant="outline" className="w-full justify-between h-10 border-gray-200 dark:border-white/10 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5" onClick={() => navigate('/insights')}>
+                    View Full Analysis <ArrowRight className="h-4 w-4" />
+                 </Button>
               </CardContent>
             </Card>
         </div>
 
+        {/* 📋 DIAGNOSTIC CONSOLE (Any How Fixes) */}
+        <div className="pt-10 border-t border-gray-200 dark:border-white/10">
+          <button 
+            onClick={() => setShowLogs(!showLogs)}
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-emerald-500 transition-colors"
+          >
+            <Terminal className="h-3 w-3" />
+            {showLogs ? 'Hide Background Diagnostics' : 'Show Background Diagnostics'}
+          </button>
+          
+          <AnimatePresence>
+            {showLogs && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="mt-4 glass-card rounded-2xl p-4 overflow-hidden border-dashed"
+              >
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 dark:border-white/5">
+                   <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Phone System Logs</h3>
+                   <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-red-500" onClick={() => logger.clearLogs()}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400" onClick={() => setShowLogs(false)}>
+                        <ArrowRight className="h-3 w-3 rotate-[90deg]" />
+                      </Button>
+                   </div>
+                </div>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto scrollbar-hide text-[11px] font-mono">
+                  {logs.length === 0 ? (
+                    <p className="text-gray-400 italic py-4 text-center">No active signals yet...</p>
+                  ) : logs.map((log, i) => (
+                    <div key={i} className="flex gap-1 p-1 hover:bg-white/50 dark:hover:bg-white/5 rounded border-b border-gray-300/10 last:border-0 overflow-hidden">
+                      <span className="text-gray-400 flex-shrink-0">[{log.timestamp}]</span>
+                      <span className={`font-bold uppercase ${log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-yellow-500' : 'text-emerald-500'}`}>
+                        {log.level}
+                      </span>
+                      <span className="text-gray-700 dark:text-gray-300 break-all">{log.message}</span>
+                      {log.data && (
+                        <pre className="text-[9px] text-gray-400 mt-1 block bg-black/5 dark:bg-black/20 p-1 rounded overflow-x-auto">
+                          {JSON.stringify(log.data, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* 4. ACTIVITY TABLE */}
-        <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="glass-card rounded-2xl overflow-hidden mt-8">
           <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
              <div className="flex items-center gap-4">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Activity</h3>
