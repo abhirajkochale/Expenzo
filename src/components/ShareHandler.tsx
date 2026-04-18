@@ -42,7 +42,7 @@ export default function ShareHandler() {
           category: parsed.category || 'other',
           type: parsed.type || 'expense',
           date: parsed.timestamp || new Date().toISOString(),
-          account_id: null
+          account_id: undefined
         });
 
         setStatus('success');

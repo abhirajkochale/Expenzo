@@ -20,9 +20,10 @@ import { format, parseISO, isValid, subMonths, getDaysInMonth, getDate } from 'd
 import { useTransactionListener } from '@/hooks/useTransactionListener';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Transaction, CategorySpend, CategoryType, CATEGORY_METADATA } from '@/types/types';
+import { Transaction, CategorySpend, CategoryType } from '@/types/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Smartphone, Clipboard, Loader2, Copy } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Smartphone, Clipboard, Copy } from 'lucide-react';
 import { aiService } from '@/services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -390,7 +391,7 @@ export default function DashboardPage() {
           category: parsed.category || 'other',
           type: parsed.type || 'expense',
           date: parsed.timestamp || new Date().toISOString(),
-          account_id: null
+          account_id: undefined
         });
         toast({
           title: "Added Successfully!",
