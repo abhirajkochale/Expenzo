@@ -151,6 +151,33 @@ Answer naturally and briefly as Expenzo using the context provided above.
 
     throw new Error("All AI models are currently unavailable.");
   }
+
+  /**
+   * Parses raw transaction text (SMS/Notification) into structured JSON.
+   */
+  async parseTransactionWithAI(text: string): Promise<any> {
+    const prompt = `
+      Extract transaction details from this text in India:
+      "${text}"
+
+      Return ONLY a JSON object with:
+      - amount (number)
+      - merchant (string)
+      - category (string - e.g. Food, Transport, Shopping, Bills, etc.)
+      - type ("credit" or "debit")
+      - timestamp (current ISO string: ${new Date().toISOString()})
+    `;
+
+    const response = await this.generateText(prompt);
+    try {
+      // Clean possible markdown code blocks from AI response
+      const cleanJson = response.replace(/```json|```/g, "").trim();
+      return JSON.parse(cleanJson);
+    } catch (e) {
+      console.error("Failed to parse AI response for transaction:", response);
+      return null;
+    }
+  }
 }
 
 export const aiService = new AIService();

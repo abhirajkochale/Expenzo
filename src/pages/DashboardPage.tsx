@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -11,15 +11,19 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
 import { 
-  Plus, Bot, Sparkles, Filter, CalendarDays,
+  Bot, Sparkles, Filter, CalendarDays,
   AlertTriangle, TrendingUp, Calendar, Lightbulb, ShieldCheck, Target,
   Search, ArrowRight, Wallet, Activity
 } from 'lucide-react';
 import { transactionApi } from '@/db/api';
-import { CategorySpend, Transaction, CATEGORY_METADATA, CategoryType } from '@/types/types';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, isValid, subMonths, getDaysInMonth, getDate } from 'date-fns';
+import { useTransactionListener } from '@/hooks/useTransactionListener';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { Transaction, CategorySpend, CategoryType, CATEGORY_METADATA } from '@/types/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Smartphone } from 'lucide-react';
 
 // --- TYPES ---
 interface AIInsight {
@@ -240,57 +244,105 @@ export default function DashboardPage() {
   
   // --- Transaction List Filter ---
   const [txCategoryFilter, setTxCategoryFilter] = useState<string>('all');
+  const [autoDetect, setAutoDetect] = useState(() => {
+    return localStorage.getItem('auto_detect_transactions') === 'true';
+  });
+
+  const { toast } = useToast();
 
   const displayName = user?.user_metadata?.username || user?.email?.split('@')[0] || 'Friend';
 
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  const { checkAccess, requestAccess } = useTransactionListener(handleRefresh);
+
   // 1. Load Data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const data = await transactionApi.getAll();
+      const safeData = data || [];
+      setAllTransactions(safeData);
+
+      // Generate Insights & Actions
+      const currentMonthKey = format(new Date(), 'yyyy-MM');
+      const thisMonthTrans = safeData.filter(t => t.date && t.date.startsWith(currentMonthKey));
+      
+      const categoryMap = new Map<string, CategorySpend>();
+      
+      thisMonthTrans.forEach(t => {
+        if (t.type === 'expense') {
+          const cat = (t.category || 'other') as CategoryType; 
+          
+          const existing = categoryMap.get(cat) || { 
+              category: cat, 
+              total_spent: 0, 
+              transaction_count: 0,
+              user_id: user?.id || 'current', 
+              month: currentMonthKey          
+          };
+          
+          existing.total_spent += Number(t.amount);
+          existing.transaction_count += 1;
+          categoryMap.set(cat, existing);
+        }
+      });
+      
+      const catData = Array.from(categoryMap.values()).sort((a, b) => b.total_spent - a.total_spent);
+      
+      setAiAnalysis(generateAIInsights(safeData, catData));
+      const income = thisMonthTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
+      const expense = thisMonthTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
+      setActionPlan(generateActionPlan(safeData, income, expense));
+
+    } catch (e) {
+      console.error("Failed to load transactions", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const data = await transactionApi.getAll();
-        const safeData = data || [];
-        setAllTransactions(safeData);
-
-        // Generate Insights & Actions
-        const currentMonthKey = format(new Date(), 'yyyy-MM');
-        const thisMonthTrans = safeData.filter(t => t.date && t.date.startsWith(currentMonthKey));
-        
-        const categoryMap = new Map<string, CategorySpend>();
-        
-        thisMonthTrans.forEach(t => {
-          if (t.type === 'expense') {
-            const cat = (t.category || 'other') as CategoryType; 
-            
-            const existing = categoryMap.get(cat) || { 
-                category: cat, 
-                total_spent: 0, 
-                transaction_count: 0,
-                user_id: user?.id || 'current', 
-                month: currentMonthKey          
-            };
-            
-            existing.total_spent += Number(t.amount);
-            existing.transaction_count += 1;
-            categoryMap.set(cat, existing);
-          }
-        });
-        
-        const catData = Array.from(categoryMap.values()).sort((a, b) => b.total_spent - a.total_spent);
-        
-        setAiAnalysis(generateAIInsights(safeData, catData));
-        const income = thisMonthTrans.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
-        const expense = thisMonthTrans.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
-        setActionPlan(generateActionPlan(safeData, income, expense));
-
-      } catch (e) {
-        console.error("Failed to load transactions", e);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [user]);
+
+  const handleToggleAutoDetect = async (checked: boolean) => {
+    // 1. Update UI state immediately for responsive feel
+    setAutoDetect(checked);
+    localStorage.setItem('auto_detect_transactions', checked.toString());
+
+    if (checked) {
+      try {
+        const access = await checkAccess();
+        
+        // Handle web/unsupported platforms
+        if ((access as any).web) {
+          toast({
+            title: "Simulated Mode",
+            description: "Running in browser. You can simulate detections via console.",
+          });
+          return;
+        }
+
+        if (!access.granted) {
+          toast({
+            title: "Permission Required",
+            description: "Please enable Notification Access for Expenzo in the next screen.",
+          });
+          await requestAccess();
+        } else {
+          toast({
+            title: "Auto-Detect Active",
+            description: "Expenzo is now listening for transaction signals.",
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to trigger native permissions:", err);
+      }
+    }
+  };
 
   // 2. Filter Transactions (View Filter)
   const filteredTransactions = useMemo(() => {
@@ -397,10 +449,11 @@ export default function DashboardPage() {
     return (
       <MainLayout>
         <div className="space-y-6">
-          <Skeleton className="h-12 w-full" />
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
           </div>
         </div>
       </MainLayout>
@@ -419,15 +472,10 @@ export default function DashboardPage() {
 
       {/* BACKGROUND AMBIENCE (Theme Aware) */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-         {/* Light Mode Blobs */}
          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-200/40 rounded-full blur-[120px] dark:opacity-0 mix-blend-multiply" />
          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-200/40 rounded-full blur-[100px] dark:opacity-0 mix-blend-multiply" />
-         
-         {/* Dark Mode Blobs */}
          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[100px] opacity-0 dark:opacity-100 transition-opacity" />
          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] opacity-0 dark:opacity-100 transition-opacity" />
-         
-         {/* Grid Texture */}
          <div className="absolute inset-0 spatial-grid opacity-60 dark:opacity-30" />
       </div>
 
@@ -443,7 +491,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Styled Selects */}
             <div className="glass-card rounded-lg flex items-center p-1 bg-white/50 dark:bg-white/5">
                 <Select value={filterType} onValueChange={(v) => setFilterType(v as 'month' | 'year' | 'all')}>
                   <SelectTrigger className="w-[110px] md:w-[120px] border-none bg-transparent focus:ring-0 text-gray-700 dark:text-white font-medium text-xs md:text-sm">
@@ -457,7 +504,6 @@ export default function DashboardPage() {
                   </SelectContent>
                 </Select>
 
-                {/* MONTH SELECTOR */}
                 {filterType === 'month' && (
                   <>
                     <div className="w-px h-4 bg-gray-300 dark:bg-white/20 mx-1" />
@@ -475,7 +521,6 @@ export default function DashboardPage() {
                   </>
                 )}
 
-                {/* YEAR SELECTOR */}
                 {filterType === 'year' && (
                   <>
                     <div className="w-px h-4 bg-gray-300 dark:bg-white/20 mx-1" />
@@ -493,12 +538,6 @@ export default function DashboardPage() {
                   </>
                 )}
             </div>
-
-            <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 rounded-full px-6">
-              <Link to="/transactions">
-                <Plus className="mr-2 h-4 w-4" /> Add
-              </Link>
-            </Button>
           </div>
         </div>
 
@@ -509,13 +548,12 @@ export default function DashboardPage() {
             <div className="flex justify-between items-start mb-4">
                <div>
                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Income</p>
-                 <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{formatCurrency(summaryData.income)}</div>
+                 <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors uppercaseTracking-wider">{formatCurrency(summaryData.income)}</div>
                </div>
                <div className="p-3 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400">
                  <TrendingUp className="h-6 w-6" />
                </div>
             </div>
-            <p className="text-xs text-gray-500 font-medium">{filterType === 'month' ? "Consistent flow" : "Total inflow"}</p>
           </div>
 
           <div className="glass-card rounded-2xl p-6 relative overflow-hidden group tilt-card">
@@ -529,7 +567,6 @@ export default function DashboardPage() {
                  <Activity className="h-6 w-6" />
                </div>
             </div>
-            
             {filterType === 'month' && summaryData.predictionText ? (
                 <div className="mt-2">
                   <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 mb-1">
@@ -538,14 +575,9 @@ export default function DashboardPage() {
                       {summaryData.expenseStatus === 'danger' ? 'High Risk' : 'Safe'}
                     </span>
                   </div>
-                  <Progress 
-                    value={Math.min(100, (summaryData.expense / (summaryData.projectedExpense || 1)) * 100)} 
-                    className={`h-1.5 bg-gray-200 dark:bg-white/10 ${summaryData.expenseStatus === 'danger' ? '[&>*]:bg-red-500' : '[&>*]:bg-emerald-500'}`} 
-                  />
+                  <Progress value={Math.min(100, (summaryData.expense / (summaryData.projectedExpense || 1)) * 100)} className={`h-1.5 bg-gray-200 dark:bg-white/10 ${summaryData.expenseStatus === 'danger' ? '[&>*]:bg-red-500' : '[&>*]:bg-emerald-500'}`} />
                 </div>
-            ) : (
-                <p className="text-xs text-gray-500 font-medium">Total outflow</p>
-            )}
+            ) : <p className="text-xs text-gray-500 font-medium font-medium uppercase tracking-wider">Total Output</p>}
           </div>
 
           <div className="glass-card rounded-2xl p-6 relative overflow-hidden group tilt-card">
@@ -563,111 +595,84 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 2. ASK EXPENZO (Floating Hologram Banner) */}
-        <div 
-          onClick={() => window.dispatchEvent(new CustomEvent('open-guardian-chat'))}
-          className="cursor-pointer relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gray-900 dark:bg-black/40 backdrop-blur-xl px-6 py-6 md:px-8 md:py-8 text-white shadow-xl shadow-emerald-500/10 transition-all hover:scale-[1.01] group"
-        >
-          {/* Animated Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-transparent to-blue-500/20 opacity-50 group-hover:opacity-100 transition-opacity" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
-             <div className="flex items-center gap-4 md:gap-6 text-center md:text-left flex-col md:flex-row">
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                   <Bot className="h-8 w-8 text-white" />
-                </div>
-                <div>
-                   <h2 className="text-2xl font-bold text-white mb-1">Ask Expenzo</h2>
-                   <p className="text-gray-300 text-sm">Gemini-powered spatial assistant. Analyze patterns instantly.</p>
-                </div>
-             </div>
+        {/* 2. QUICK ACTIONS & AUTO-DETECT */}
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+            <div onClick={() => window.dispatchEvent(new CustomEvent('open-guardian-chat'))} className="cursor-pointer relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gray-900 dark:bg-black/40 backdrop-blur-xl px-6 py-6 text-white shadow-xl hover:scale-[1.01] transition-all group">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-transparent to-blue-500/20 opacity-50 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex items-center justify-between gap-4">
+                 <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
+                       <Bot className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                       <h2 className="text-xl font-bold text-white">Ask Expenzo</h2>
+                       <p className="text-gray-400 text-xs">Analyze my spending...</p>
+                    </div>
+                 </div>
+                 <Search className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
 
-             <div className="flex-1 w-full max-w-xl">
-                <div className="relative group/search">
-                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full blur opacity-20 group-hover/search:opacity-40 transition-opacity" />
-                   <div className="relative bg-white/10 border border-white/20 rounded-full px-5 py-3 flex items-center gap-3 text-gray-300 group-hover/search:text-white transition-colors backdrop-blur-md">
-                      <Search className="h-5 w-5" />
-                      <span className="text-sm truncate">Analyze my spending this month...</span>
-                      <div className="ml-auto bg-emerald-500 rounded-full p-1.5 text-white shrink-0">
-                         <ArrowRight className="h-4 w-4" />
-                      </div>
-                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-                   {['Find tax deductions', 'Forecast savings', 'Analyze food spend'].map(tag => (
-                      <span key={tag} className="text-[10px] px-3 py-1 rounded-full bg-white/10 border border-white/10 text-gray-300 hover:bg-white/20 transition-colors cursor-pointer backdrop-blur-sm">
-                          {tag}
-                      </span>
-                   ))}
-                </div>
-             </div>
-          </div>
+            <div className="glass-card rounded-3xl p-6 flex items-center justify-between border-l-4 border-l-emerald-500">
+               <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <Smartphone className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white">Auto-Detect Transactions</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Detect UPI SMS & Notifications</p>
+                  </div>
+               </div>
+               <Switch 
+                  id="auto-detect" 
+                  checked={autoDetect}
+                  onCheckedChange={handleToggleAutoDetect}
+                  className="data-[state=checked]:bg-emerald-600"
+               />
+            </div>
         </div>
 
-
-        {/* 3. GRID: ACTION PLAN, GUARDIAN ANALYSIS, HEALTH SCORE */}
+        {/* 3. GRID: GAUGE & INSIGHTS */}
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            
-            {/* Health Score Gauge */}
             <FinancialHealthGauge transactions={allTransactions} currentMonthKey={selectedMonth} />
-
-            {/* Action Plan */}
+            
             <Card className="glass-card border-l-4 border-l-purple-500">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
                   <Target className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   Smart Action Plan
                 </CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-400">AI-generated steps to optimize wealth</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 mt-2">
-                {actionPlan.length === 0 ? (
-                  <p className="text-sm text-gray-500">Add data to generate a plan.</p>
-                ) : (
-                  actionPlan.map(action => (
-                    <div key={action.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/5 hover:bg-white/80 dark:hover:bg-white/10 transition-colors">
-                      <div className={`p-2 rounded-lg ${action.color}`}>
-                        <action.icon className="h-5 w-5" />
-                      </div>
+                {actionPlan.length === 0 ? <p className="text-sm text-gray-500">No data.</p> : actionPlan.map(action => (
+                    <div key={action.id} className="flex items-center gap-4 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/5">
+                      <div className={`p-2 rounded-lg ${action.color}`}><action.icon className="h-5 w-5" /></div>
                       <div>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{action.text}</p>
                         <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">{action.subtext}</p>
                       </div>
                     </div>
-                  ))
-                )}
+                ))}
               </CardContent>
             </Card>
 
-            {/* Guardian Analysis */}
-            <Card className="glass-card border-l-4 border-l-emerald-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
+            <Card className="glass-card border-l-4 border-l-emerald-500 text-gray-900 dark:text-white">
+               <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  Guardian Insights
+                  Insights
                 </CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-400">Real-time anomaly detection</CardDescription>
               </CardHeader>
-              <CardContent className="mt-2">
-                {aiAnalysis.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-gray-500">
-                    <ShieldCheck className="h-8 w-8 mb-2 opacity-50" />
-                    <p className="text-sm font-medium">All systems nominal.</p>
-                  </div>
-                ) : (
+              <CardContent>
+                {aiAnalysis.length === 0 ? <p className="text-sm text-gray-500">All systems good.</p> : (
                   <div className="space-y-3">
                     {aiAnalysis.map((insight, index) => (
-                      <div key={index} className="flex items-start gap-4 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-gray-200 dark:border-white/5">
-                        <div className={`p-2 rounded-lg shrink-0 ${insight.color}`}>
-                          <insight.icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                             <p className="text-sm font-bold text-gray-900 dark:text-white">{insight.title}</p>
-                             {insight.amount && <span className="text-xs font-mono text-gray-500 font-medium">{formatCurrency(insight.amount)}</span>}
-                          </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed font-medium">{insight.description}</p>
-                        </div>
+                      <div key={index} className="flex items-start gap-4 p-3 rounded-xl bg-white/60 dark:bg-white/5 border border-white/5">
+                         <div className={`p-2 rounded-lg shrink-0 ${insight.color}`}><insight.icon className="h-5 w-5" /></div>
+                         <div className="flex-1">
+                           <p className="text-sm font-bold">{insight.title}</p>
+                           <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{insight.description}</p>
+                         </div>
                       </div>
                     ))}
                   </div>
@@ -676,82 +681,52 @@ export default function DashboardPage() {
             </Card>
         </div>
 
-        {/* 5. RECENT TRANSACTIONS (Data Table) */}
+        {/* 4. ACTIVITY TABLE */}
         <div className="glass-card rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-gray-200 dark:border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-             <div>
+          <div className="p-6 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
+             <div className="flex items-center gap-4">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Recent Activity</h3>
-                <p className="text-xs text-gray-500 font-medium">Latest financial movements</p>
-             </div>
-             
-             <div className="flex items-center gap-3 w-full md:w-auto">
-               <div className="bg-gray-100 dark:bg-black/30 rounded-lg flex items-center px-3 py-1.5 border border-gray-200 dark:border-white/10 w-full md:w-auto">
-                  <Search className="w-4 h-4 text-gray-500 mr-2" />
-                  <Select value={txCategoryFilter} onValueChange={setTxCategoryFilter}>
-                    <SelectTrigger className="w-full md:w-[140px] h-auto border-none bg-transparent p-0 text-xs text-gray-700 dark:text-white focus:ring-0 font-medium">
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-white/10 text-gray-900 dark:text-white">
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {availableCategories.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-               </div>
-               <Button variant="ghost" size="sm" asChild className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 whitespace-nowrap">
-                 <Link to="/transactions">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
-               </Button>
-             </div>
-          </div>
-
-          <div className="p-0">
-            {recentTransactionsList.length === 0 ? (
-               <div className="p-12 text-center text-gray-500 text-sm font-medium">No recent data found.</div>
-            ) : (
-              // FIX: overflow-x-auto allows table scrolling on mobile
-              <div className="overflow-x-auto">
-                <Table className="min-w-[600px]">
-                  <TableHeader className="bg-gray-50/50 dark:bg-white/5 hover:bg-gray-100/50 dark:hover:bg-white/5">
-                    <TableRow className="border-gray-200 dark:border-white/5 hover:bg-transparent">
-                      <TableHead className="text-gray-500 dark:text-gray-400 font-semibold">Description</TableHead>
-                      <TableHead className="text-gray-500 dark:text-gray-400 font-semibold">Category</TableHead>
-                      <TableHead className="text-gray-500 dark:text-gray-400 font-semibold">Date</TableHead>
-                      <TableHead className="text-right text-gray-500 dark:text-gray-400 font-semibold">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentTransactionsList.map((t) => (
-                      <TableRow key={t.id} className="border-gray-200 dark:border-white/5 hover:bg-white/40 dark:hover:bg-white/5 transition-colors group">
-                        <TableCell className="font-medium text-gray-900 dark:text-white">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-lg">
-                               {CATEGORY_METADATA[t.category as keyof typeof CATEGORY_METADATA]?.icon || '📦'}
-                             </div>
-                             <span className="truncate max-w-[180px]">{t.description}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-gray-300 dark:border-white/10 text-gray-600 dark:text-gray-400 bg-transparent group-hover:border-emerald-500/30 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                            {t.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-500 text-xs font-medium">
-                          {format(parseISO(t.date), 'MMM dd')}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono font-bold ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
-                          {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
-                        </TableCell>
-                      </TableRow>
+                <Select value={txCategoryFilter} onValueChange={setTxCategoryFilter}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs bg-white/50 dark:bg-white/5 border-none focus:ring-0">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {availableCategories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                  </SelectContent>
+                </Select>
+             </div>
+             <Button variant="ghost" size="sm" asChild className="text-emerald-700 dark:text-emerald-400">
+               <Link to="/transactions">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+             </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-200 dark:border-white/5">
+                  <TableHead className="font-semibold text-gray-500 dark:text-gray-400">Description</TableHead>
+                  <TableHead className="font-semibold text-gray-500 dark:text-gray-400">Category</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-500 dark:text-gray-400">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentTransactionsList.map((t) => (
+                  <TableRow key={t.id} className="border-gray-200 dark:border-white/5">
+                    <TableCell className="font-medium text-gray-900 dark:text-white">{t.description}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs uppercase tracking-wider bg-transparent">{t.category}</Badge></TableCell>
+                    <TableCell className={`text-right font-mono font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-gray-900 dark:text-white'}`}>
+                      {t.type === 'income' ? '+' : ''}{formatCurrency(t.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
 
       </div>
     </MainLayout>
   );
-}
+}

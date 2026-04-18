@@ -96,7 +96,7 @@ export default function SignupPage() {
 
       if (data.user) {
         // 2. Create Profile Entry (Fail-safe)
-        const { error: profileError } = await supabase.from('profiles').insert({
+        const { error: profileError } = await supabase.from('profiles').upsert({
           id: data.user.id,
           username: username,
           email: email, 
