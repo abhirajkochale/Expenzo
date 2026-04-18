@@ -22,8 +22,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Transaction, CategorySpend, CategoryType, CATEGORY_METADATA } from '@/types/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Clipboard, Loader2, Copy } from 'lucide-react';
+import { aiService } from '@/services/aiService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- TYPES ---
 interface AIInsight {
@@ -309,19 +310,16 @@ export default function DashboardPage() {
   }, [user]);
 
   const handleToggleAutoDetect = async (checked: boolean) => {
-    // 1. Update UI state immediately for responsive feel
     setAutoDetect(checked);
     localStorage.setItem('auto_detect_transactions', checked.toString());
 
     if (checked) {
       try {
         const access = await checkAccess();
-        
-        // Handle web/unsupported platforms
         if ((access as any).web) {
           toast({
-            title: "Simulated Mode",
-            description: "Running in browser. You can simulate detections via console.",
+            title: "PWA Mode Active",
+            description: "Browser detected. Use 'Share to Expenzo' or Clipboard detection for auto-magic!",
           });
           return;
         }
@@ -334,13 +332,77 @@ export default function DashboardPage() {
           await requestAccess();
         } else {
           toast({
-            title: "Auto-Detect Active",
-            description: "Expenzo is now listening for transaction signals.",
+            title: "System Auto-Detect Active",
+            description: "Expenzo is now listening for background transaction signals.",
           });
         }
       } catch (err) {
         console.warn("Failed to trigger native permissions:", err);
       }
+    }
+  };
+
+  // --- 💡 Magic Clipboard Detection ---
+  const [clipboardTxn, setClipboardTxn] = useState<string | null>(null);
+  
+  const checkClipboard = async () => {
+    if (!autoDetect) return; // Only check if auto-detect is enabled globally
+    try {
+      const text = await navigator.clipboard.readText();
+      const lowerText = text.toLowerCase();
+      // Heuristic for transactions
+      const isTxn = (lowerText.includes('paid') || lowerText.includes('received') || text.includes('₹') || lowerText.includes('rs.')) && 
+                   !lowerText.includes('request') && text.length < 500;
+      
+      if (isTxn && text !== localStorage.getItem('last_parsed_clipboard')) {
+        setClipboardTxn(text);
+      } else {
+        setClipboardTxn(null);
+      }
+    } catch (err) {
+      // Permission denied or not supported
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('focus', checkClipboard);
+    return () => window.removeEventListener('focus', checkClipboard);
+  }, [autoDetect]);
+
+  const handleHandleClipboardTxn = async () => {
+    if (!clipboardTxn) return;
+    localStorage.setItem('last_parsed_clipboard', clipboardTxn);
+    const textToParse = clipboardTxn;
+    setClipboardTxn(null);
+
+    toast({
+      title: "Processing Clipboard...",
+      description: "AI is extracting transaction details.",
+    });
+
+    try {
+      const parsed = await aiService.parseTransactionWithAI(textToParse);
+      if (parsed && parsed.amount > 0) {
+        await transactionApi.create({
+          amount: parsed.amount,
+          description: `Clipboard: ${parsed.merchant}`,
+          merchant: parsed.merchant,
+          category: parsed.category || 'other',
+          type: parsed.type || 'expense',
+          date: parsed.timestamp || new Date().toISOString(),
+          account_id: null
+        });
+        toast({
+          title: "Added Successfully!",
+          description: `₹${parsed.amount} for ${parsed.merchant} via clipboard.`,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Parsing Failed",
+        description: "Could not read transaction from clipboard.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -480,6 +542,45 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-8 relative z-10">
+        
+        {/* 🪄 SMART DETECTION BANNER (Any How Mode) */}
+        <AnimatePresence>
+          {clipboardTxn && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0, y: -20 }}
+              animate={{ height: 'auto', opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: -20 }}
+              className="overflow-hidden mb-6"
+            >
+              <div className="glass-card bg-emerald-500 text-white p-4 rounded-2xl flex items-center justify-between border-none shadow-lg shadow-emerald-500/20">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 p-2 rounded-xl">
+                    <Clipboard className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">Transaction Detected in Clipboard!</h3>
+                    <p className="text-white/80 text-sm italic line-clamp-1 max-w-[200px] md:max-w-md">"{clipboardTxn}"</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/20 font-bold"
+                    onClick={() => setClipboardTxn(null)}
+                  >
+                    Ignore
+                  </Button>
+                  <Button 
+                    className="bg-white text-emerald-600 hover:bg-emerald-50 font-bold px-6"
+                    onClick={handleHandleClipboardTxn}
+                  >
+                    Add Now
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* HEADER & FILTERS */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -629,6 +730,21 @@ export default function DashboardPage() {
                   onCheckedChange={handleToggleAutoDetect}
                   className="data-[state=checked]:bg-emerald-600"
                />
+            </div>
+
+            <div onClick={handleHandleClipboardTxn} className="glass-card rounded-3xl p-6 flex items-center justify-between border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-colors group">
+               <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                    <Copy className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white">Smart Paste</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Parse txn from copied text</p>
+                  </div>
+               </div>
+               <div className="bg-blue-100 dark:bg-blue-500/20 px-3 py-1 rounded-full text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                 Try AI
+               </div>
             </div>
         </div>
 

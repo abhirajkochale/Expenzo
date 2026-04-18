@@ -7,6 +7,7 @@ import BudgetsPage from './pages/BudgetsPage';
 import InsightsPage from './pages/InsightsPage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import ShareHandler from './components/ShareHandler';
 import type { ReactNode } from 'react';
 
 interface RouteConfig {
@@ -73,6 +74,13 @@ const routes: RouteConfig[] = [
     name: 'Admin',
     path: '/admin',
     element: <AdminPage />,
+    visible: false,
+    requiresAuth: true
+  },
+  {
+    name: 'Share Target',
+    path: '/share-target',
+    element: <ShareHandler />,
     visible: false,
     requiresAuth: true
   }
